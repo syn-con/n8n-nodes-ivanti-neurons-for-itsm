@@ -1,6 +1,6 @@
 # n8n-nodes-ivanti-neurons-for-itsm
 
-[![NPM Version](https://img.shields.io/npm/v/n8n-nodes-ivanti-neurons-for-itsm?style=flat-square)](https://www.npmjs.com/package/n8n-nodes-ivanti-neurons-for-itsm)
+[![NPM Version](https://img.shields.io/npm/v/n8n-nodes-ivanti-neurons-for-itsm?style=flat-square)](https://www.npmjs.com/package/@synergyconsulting/n8n-nodes-ivanti-neurons-for-itsm)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg?style=flat-square)](https://opensource.org/licenses/MIT)
 
 A comprehensive n8n community node package for automating [Ivanti Neurons for ITSM](https://www.ivanti.com/products/neurons-for-itsm) from your [n8n](https://n8n.io/) workflows.
