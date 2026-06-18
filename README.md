@@ -155,7 +155,7 @@ This package includes **four nodes** for comprehensive Ivanti integration:
 - Report workflow execution status
 - Provide traceability links
 
-**Note**: Requires the Ivanti Neurons Connector package installed on your Ivanti instance. Contact [UAB Synergy](https://www.synergy.eu/) for details.
+**Note**: Requires the Ivanti Neurons Connector package installed on your Ivanti instance. Contact [Synergy Consulting](https://www.synergy.eu/) for details.
 
 ### 4. Ivanti Neurons for ITSM Connector Trigger
 
@@ -1536,7 +1536,7 @@ A: Common causes:
 1. **Documentation**: Start with this README and [n8n docs](https://docs.n8n.io/)
 2. **Community**: Ask questions in [n8n community forum](https://community.n8n.io/)
 3. **Issues**: Report bugs on [GitHub Issues](https://github.com/KonstantinShturo/n8n-nodes-ivanti-neurons-for-itsm/issues)
-4. **Support**: For Connector nodes, contact [UAB Synergy](mailto:support@synergy.eu)
+4. **Support**: For Connector nodes, contact [Synergy Consulting](mailto:support@synergy.eu)
 
 ### Contributing
 
