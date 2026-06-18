@@ -1,0 +1,21 @@
+{
+    "node": "n8n-nodes-ivanti-neurons-for-itsm.ivantiNeuronsForItsmPollingTrigger",
+    "nodeVersion": "0.1",
+    "codexVersion": "0.1",
+    "categories": [
+        "Ivanti Neurons for ITSM",
+        "Service Desk"
+    ],
+    "resources": {
+        "credentialDocumentation": [
+            {
+                "url": "https://help.ivanti.com/res/help/en_US/IA/2023/GS/About-Automation.htm"
+            }
+        ],
+        "primaryDocumentation": [
+            {
+                "url": "https://help.ivanti.com/res/help/en_US/IA/2023/GS/About-Automation.htm"
+            }
+        ]
+    }
+}

@@ -1,0 +1,21 @@
+{
+    "node": "n8n-nodes-ivanti-neurons-for-itsm.ivantiNeuronsForItsmConnectorTrigger",
+    "nodeVersion": "0.1",
+    "codexVersion": "0.1",
+    "categories": [
+        "Ivanti Neurons for ITSM Connector",
+        "Service Desk"
+    ],
+    "resources": {
+        "credentialDocumentation": [
+            {
+                "url": "http://httpbin.org/#/Auth/get_bearer"
+            }
+        ],
+        "primaryDocumentation": [
+            {
+                "url": "http://httpbin.org/"
+            }
+        ]
+    }
+}

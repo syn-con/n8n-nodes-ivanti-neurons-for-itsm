@@ -1,0 +1,64 @@
+{
+	"name": "@synergyconsulting/n8n-nodes-ivanti-neurons-for-itsm",
+	"version": "1.1.1",
+	"description": "Nodes for Ivanti Neurons for ITSM",
+	"license": "MIT",
+	"homepage": "",
+	"keywords": [
+		"n8n-community-node-package",
+		"ivanti",
+		"neurons",
+		"itsm",
+		"Automation"
+	],
+	"author": {
+		"name": "UAB Synergy",
+		"email": "support@synergy.eu"
+	},
+	"repository": {
+		"type": "git",
+		"url": "https://github.com/syn-con/n8n-nodes-ivanti-neurons-for-itsm.git"
+	},
+	"engines": {
+		"node": ">=20.15"
+	},
+	"scripts": {
+		"build": "n8n-node build",
+		"build:watch": "n8n-node dev --external-n8n",
+		"dev": "n8n-node dev",
+		"lint": "n8n-node lint",
+		"lint:fix": "n8n-node lint --fix",
+		"release": "n8n-node release",
+		"prepublishOnly": "npm run build"
+	},
+	"files": [
+		"dist"
+	],
+	"n8n": {
+		"n8nNodesApiVersion": 1,
+		"strict": true,
+		"credentials": [
+			"dist/credentials/IvantiNeuronsForItsmConnectorAuthApi.credentials.js",
+			"dist/credentials/ivantiNeuronsForItsmApiKeyApi.credentials.js"
+		],
+		"nodes": [
+			"dist/nodes/IvantiNeuronsForITSM/IvantiNeuronsForItsm.node.js",
+			"dist/nodes/IvantiNeuronsForITSM/IvantiNeuronsForItsmTrigger.node.js",
+			"dist/nodes/IvantiNeuronsForItsmConnector/IvantiNeuronsForItsmConnector.node.js",
+			"dist/nodes/IvantiNeuronsForItsmConnector/IvantiNeuronsForItsmConnectorTrigger.node.js"
+		]
+	},
+	"devDependencies": {
+		"@n8n/node-cli": "*",
+		"eslint": "9.32.0",
+		"prettier": "3.6.2",
+		"release-it": "^19.0.4",
+		"typescript": "5.9.2"
+	},
+	"peerDependencies": {
+		"n8n-workflow": "*"
+	},
+	"publishConfig": {
+		"access": "public"
+	}
+}
