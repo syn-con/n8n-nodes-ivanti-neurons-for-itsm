@@ -3,7 +3,7 @@
 [![NPM Version](https://img.shields.io/npm/v/n8n-nodes-ivanti-neurons-for-itsm?style=flat-square)](https://www.npmjs.com/package/@synergyconsulting/n8n-nodes-ivanti-neurons-for-itsm)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg?style=flat-square)](https://opensource.org/licenses/MIT)
 
-A comprehensive n8n community node package for automating [Ivanti Neurons for ITSM](https://www.ivanti.com/products/neurons-for-itsm) from your [n8n](https://n8n.io/) workflows.
+A comprehensive n8n community node package for automating [Ivanti Neurons for ITSM](https://www.ivanti.com/products/ivanti-neurons-itsm) from your [n8n](https://n8n.io/) workflows.
 
 Ivanti Neurons for ITSM is an enterprise IT service management platform for managing incidents, changes, service requests, problems, and other ITSM processes. This package provides deep integration with the Ivanti REST/OData API, enabling sophisticated automation workflows for IT operations.
 
