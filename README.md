@@ -682,6 +682,7 @@ mode). Use **Get Service Request Parameters** to discover the RecIds.
   "par-1A2B3C4D5E6F7A8B9C0D1E2F3A4B5C6D": "Microsoft Office 365",
   "par-9F8E7D6C5B4A39281706F5E4D3C2B1A0-recId": "11223344556677889900AABBCCDDEEFF"
 }
+```
 
 ---
 
@@ -1587,7 +1588,7 @@ THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLI
 
 - Built for the [n8n](https://n8n.io/) community
 - Integrates with [Ivanti Neurons for ITSM](https://www.ivanti.com/products/neurons-for-itsm)
-- Developed and maintained by [UAB Synergy](https://www.synergy.eu/)
+- Developed and maintained by [Synergy Consulting](https://www.synergy.eu/)
 
 ---
 
