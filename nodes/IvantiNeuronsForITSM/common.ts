@@ -103,19 +103,24 @@ export function assertSafePathSegment(this: IExecuteFunctions | IPollFunctions, 
 	}
 }
 /**
- * Parses a raw string filter value into a strict boolean for OData filters.
- * Only the literal strings "true" and "false" (case-insensitive, trimmed)
- * are accepted; everything else throws so the user gets an explicit error
- * instead of a silently inverted filter.
+ * Parses a filter value into a strict boolean for OData filters.
  *
- * @param value - The raw string value from the OData filter UI
- * @throws {NodeOperationError} if the value is not "true" or "false"
+ * Accepts a real boolean (e.g. when the value comes from an n8n expression that
+ * resolves to `true`/`false`) as well as the literal strings "true" and "false"
+ * (case-insensitive, trimmed). Everything else throws so the user gets an
+ * explicit error instead of a silently inverted filter.
+ *
+ * @param value - The raw value from the OData filter UI or an expression
+ * @throws {NodeOperationError} if the value is not a boolean or "true"/"false"
  */
 export function parseBoolean(
 	this: IExecuteFunctions | ITriggerFunctions | IPollFunctions,
-	value: string,
+	value: unknown,
 ): boolean {
-	const normalized = value.trim().toLowerCase();
+	if (typeof value === 'boolean') {
+		return value;
+	}
+	const normalized = String(value).trim().toLowerCase();
 	if (normalized === 'true') {
 		return true;
 	}
@@ -124,7 +129,7 @@ export function parseBoolean(
 	}
 	throw new NodeOperationError(
 		this.getNode(),
-		`Invalid boolean: "${value}" (expected "true" or "false")`,
+		`Invalid boolean: "${String(value)}" (expected true or false)`,
 	);
 }
 // nodes/IvantiNeuronsForITSM/common.ts
