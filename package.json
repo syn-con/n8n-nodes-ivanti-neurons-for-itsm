@@ -1,9 +1,10 @@
 {
 	"name": "@synergyconsulting/n8n-nodes-ivanti-neurons-for-itsm",
-	"version": "1.1.31",
+	"version": "1.1.4",
 	"description": "Nodes for Ivanti Neurons for ITSM",
 	"license": "MIT",
 	"homepage": "",
+
 	"keywords": [
 		"n8n-community-node-package"
 	],
