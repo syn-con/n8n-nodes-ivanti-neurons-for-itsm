@@ -14,6 +14,7 @@ import * as relationship from './actions/relationship';
 
 import * as serviceReq from './actions/serviceReq';
 import * as quickAction from './actions/quickAction';
+import * as automation from './actions/automation';
 
 import { getServiceReqTemplates, getServiceReqTemplateParameters, getServiceRequestParametersSchema, getServiceRequestParametersSimplifiedSchema } from './methods/listSearch';
 
@@ -28,6 +29,8 @@ import { getServiceReqTemplates, getServiceReqTemplateParameters, getServiceRequ
  * - **Service Request** – create service requests, list subscriptions, and inspect parameters
  * - **Search** – full-text search (single object or global) and saved-search execution
  * - **Quick Action** – trigger a named quick action on a business-object record
+ *
+ * All resources authenticate with the API-key credential (`ivantiNeuronsForItsmApiKeyApi`).
  *
  * The node delegates execution to the {@link router} function, which dispatches to the
  * appropriate operation module based on the `resource` and `operation` parameters.
@@ -71,6 +74,10 @@ export class IvantiNeuronsForItsm implements INodeType {
                         value: 'attachment',
                     },
                     {
+                        name: 'Automation',
+                        value: 'automation',
+                    },
+                    {
                         name: 'Business Object',
                         value: 'businessobject',
                     },
@@ -99,6 +106,7 @@ export class IvantiNeuronsForItsm implements INodeType {
             ...relationship.description,
             ...serviceReq.description,
             ...quickAction.description,
+            ...automation.description,
         ]
     }
 

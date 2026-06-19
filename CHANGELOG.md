@@ -5,6 +5,15 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.2.0] - 2026-06-19
+
+### Changed
+- Consolidated the standalone **Ivanti Neurons for ITSM Connector** action node into the main **Ivanti Neurons for ITSM** node as a new **Automation** resource, so the package registers a single action node (plus its trigger nodes) as required for n8n Cloud eligibility
+- The **Automation** resource now authenticates with the same API-key credential (`ivantiNeuronsForItsmApiKeyApi`) as the rest of the node
+
+### Removed
+- The separate `IvantiNeuronsForItsmConnector` action node (its single "Update Automation Transaction" operation now lives under the Automation resource of the main node). The `IvantiNeuronsForItsmConnectorTrigger` node is unchanged.
+
 ## [1.1.0] - 2026-06-15
 
 ### Added

@@ -7,7 +7,7 @@ import {
 
 import { NodeOperationError, updateDisplayOptions } from 'n8n-workflow';
 
-import { ivantiApiRequest } from '../../transports'
+import { ivantiApiRequest } from '../../transports';
 import { isValidIvantiGuid } from '../../common';
 
 /**

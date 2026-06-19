@@ -9,6 +9,7 @@ import * as attachment from './attachment'
 import * as relationship from './relationship'
 import * as serviceReq from './serviceReq'
 import * as quickAction from './quickAction'
+import * as automation from './automation'
 
 /**
  * Central dispatcher for the `IvantiNeuronsForItsm` node.
@@ -52,6 +53,9 @@ export async function router(this: IExecuteFunctions) {
 				break;
 			case 'quickAction':
 				returnData = await quickAction[ivanti.operation].execute.call(this);
+				break;
+			case 'automation':
+				returnData = await automation[ivanti.operation].execute.call(this);
 				break;
 			default:
 				throw new NodeOperationError(

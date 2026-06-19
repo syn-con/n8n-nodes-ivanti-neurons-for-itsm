@@ -16,7 +16,7 @@ export const description: INodeProperties[] = [
 		noDataExpression: true,
 		placeholder: 'Select an operation',
 		options: [
-			{ name: 'Update Automation Transaction', value: 'update',action: 'Update an automation transaction' },
+			{ name: 'Update Automation Transaction', value: 'update', action: 'Update an automation transaction' },
 		],
 		default: 'update',
 		displayOptions: {
@@ -27,7 +27,3 @@ export const description: INodeProperties[] = [
 	},
 	...update.description,
 ];
-
-
-
-

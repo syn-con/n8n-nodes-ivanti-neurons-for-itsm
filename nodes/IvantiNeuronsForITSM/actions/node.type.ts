@@ -12,6 +12,7 @@ type NodeMap = {
 	relationship: 'getRelated' | 'link' | 'unlink';
 	serviceReq: 'getSubscription' | 'getServiceReqParams' | 'create' | 'createSimplified';
 	quickAction: 'run';
+	automation: 'update';
 };
 
 /**

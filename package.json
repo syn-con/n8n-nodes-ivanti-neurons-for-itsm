@@ -1,6 +1,6 @@
 {
 	"name": "@synergyconsulting/n8n-nodes-ivanti-neurons-for-itsm",
-	"version": "1.1.46",
+	"version": "1.2.0",
 	"description": "Nodes for Ivanti Neurons for ITSM",
 	"license": "MIT",
 	"homepage": "https://github.com/syn-con/n8n-nodes-ivanti-neurons-for-itsm#readme",
@@ -41,7 +41,6 @@
 		"nodes": [
 			"dist/nodes/IvantiNeuronsForITSM/IvantiNeuronsForItsm.node.js",
 			"dist/nodes/IvantiNeuronsForITSM/IvantiNeuronsForItsmTrigger.node.js",
-			"dist/nodes/IvantiNeuronsForItsmConnector/IvantiNeuronsForItsmConnector.node.js",
 			"dist/nodes/IvantiNeuronsForItsmConnector/IvantiNeuronsForItsmConnectorTrigger.node.js"
 		]
 	},
