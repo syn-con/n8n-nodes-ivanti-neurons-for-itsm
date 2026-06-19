@@ -1,6 +1,6 @@
 import type { IDataObject, IExecuteFunctions, IPollFunctions } from 'n8n-workflow';
 import { NodeOperationError } from 'n8n-workflow';
-import { assertSafeFieldName } from '../common';
+import { assertSafeFieldName, parseBoolean } from '../common';
 
 
 /** Context shared by execute (action) and poll (trigger) callers. */
@@ -48,7 +48,7 @@ export function parseValue(
         return num;
     }
     if (fieldType === 'boolean') {
-        return Boolean(value);
+        return parseBoolean.call(this, value);
     }
     if (fieldType === 'date') {
         const date = new Date(value);
