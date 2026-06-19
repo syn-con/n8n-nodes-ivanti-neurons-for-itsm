@@ -100,7 +100,12 @@ function extractValueArray(
 	this: IExecuteFunctions | IExecuteSingleFunctions | IHookFunctions | ILoadOptionsFunctions | ITriggerFunctions | IPollFunctions,
 	response: SearchResponse,
 ): IDataObject[] {
-	if (response && Array.isArray(response.value)) {
+	// An empty body (e.g. HTTP 204 No Content, or a blank 200) means there are
+	// no records / no further pages — treat it as an empty result set.
+	if (response === undefined || response === null || (response as unknown) === '') {
+		return [];
+	}
+	if (Array.isArray(response.value)) {
 		return response.value;
 	}
 	throw new NodeOperationError(
