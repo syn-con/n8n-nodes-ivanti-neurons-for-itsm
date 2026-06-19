@@ -9,6 +9,7 @@ import {
 	type IHttpRequestOptions,
 	type ICredentialDataDecryptedObject,
 	IPollFunctions,
+	NodeOperationError,
 } from 'n8n-workflow';
 /**
  * Makes a single authenticated HTTP request to the Ivanti Neurons for ITSM REST/OData API.
@@ -32,7 +33,7 @@ export async function ivantiApiRequest(
 
 	const credential = await this.getCredentials('ivantiNeuronsForItsmConnectorAuthApi');
 	if (credential === undefined) {
-		throw new Error('No credentials got returned!');
+		throw new NodeOperationError(this.getNode(), 'No credentials got returned!');
 	}
 	const url = buildBaseUrl(credential, endpoint);
 	const options: IHttpRequestOptions = {

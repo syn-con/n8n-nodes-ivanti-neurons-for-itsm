@@ -8,7 +8,9 @@ import {
 	type ILoadOptionsFunctions,
 	type IHttpRequestOptions,
 	type ICredentialDataDecryptedObject,
+	type JsonObject,
 	IPollFunctions,
+	NodeApiError,
 	NodeOperationError,
 } from 'n8n-workflow';
 import { SearchResponse } from '../common';
@@ -40,7 +42,7 @@ export async function ivantiApiRequest(
 
 	const credential = await this.getCredentials('ivantiNeuronsForItsmApiKeyApi');
 	if (credential === undefined) {
-		throw new Error('No credentials got returned!');
+		throw new NodeOperationError(this.getNode(), 'No credentials got returned!');
 	}
 
 	const url = buildBaseUrl(credential, endpoint);
@@ -58,10 +60,13 @@ export async function ivantiApiRequest(
 
 	const response = await this.helpers.httpRequestWithAuthentication.call(this, 'ivantiNeuronsForItsmApiKeyApi', options);
 	if (response.statusCode < 200 || response.statusCode >= 300) {
-		throw new NodeOperationError(
-			this.getNode(),
-			buildIvantiErrorMessage(response.statusCode, response.body),
-		);
+		// Hand the full response to NodeApiError so the HTTP status, headers and
+		// body are preserved in the execution log and UI, while still surfacing a
+		// readable Ivanti-specific message.
+		throw new NodeApiError(this.getNode(), response as JsonObject, {
+			message: buildIvantiErrorMessage(response.statusCode, response.body),
+			httpCode: String(response.statusCode),
+		});
 	}
 	return parseJsonBody(response.body);
 }
@@ -240,7 +245,7 @@ export async function ivantiApiRequestFormData(
 ) {
 	const credential = await this.getCredentials('ivantiNeuronsForItsmApiKeyApi');
 	if (credential === undefined) {
-		throw new Error('No credentials got returned!');
+		throw new NodeOperationError(this.getNode(), 'No credentials got returned!');
 	}
 	const url = buildBaseUrl(credential, endpoint);
 	const options: IHttpRequestOptions = {
@@ -275,7 +280,7 @@ export async function ivantiApiRequestBinary(
 	const credential = await this.getCredentials('ivantiNeuronsForItsmApiKeyApi');
 
 	if (credential === undefined) {
-		throw new Error('No credentials got returned!');
+		throw new NodeOperationError(this.getNode(), 'No credentials got returned!');
 	}
 	const url = buildBaseUrl(credential, endpoint);
 	const options: IHttpRequestOptions = {
