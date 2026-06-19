@@ -148,20 +148,20 @@ This package includes **four nodes** for comprehensive Ivanti integration:
 
 **Purpose**: Report automation job results back to Ivanti
 
-**Icon**: Synergy logo
+**Icon**: SYNERGY logo
 
 **Use Cases**:
 - Complete automation transactions
 - Report workflow execution status
 - Provide traceability links
 
-**Note**: Requires the Ivanti Neurons Connector package installed on your Ivanti instance. Contact [Synergy Consulting](https://www.synergy.eu/) for details.
+**Note**: Requires the Ivanti Neurons Connector package installed on your Ivanti instance. Contact [SYNERGY](https://www.synergy.eu/) for details.
 
 ### 4. Ivanti Neurons for ITSM Connector Trigger
 
 **Purpose**: Receive webhook calls from Ivanti automation runbooks
 
-**Icon**: Synergy logo with trigger indicator
+**Icon**: SYNERGY logo with trigger indicator
 
 **Use Cases**:
 - Trigger workflows from Ivanti automations
@@ -1536,7 +1536,7 @@ A: Common causes:
 1. **Documentation**: Start with this README and [n8n docs](https://docs.n8n.io/)
 2. **Community**: Ask questions in [n8n community forum](https://community.n8n.io/)
 3. **Issues**: Report bugs on [GitHub Issues](https://github.com/KonstantinShturo/n8n-nodes-ivanti-neurons-for-itsm/issues)
-4. **Support**: For Connector nodes, contact [Synergy Consulting](mailto:support@synergy.eu)
+4. **Support**: For Connector nodes, contact [SYNERGY](mailto:support@synergy.eu)
 
 ### Contributing
 
@@ -1574,7 +1574,7 @@ Have an idea? Open a GitHub issue with:
 
 [MIT](LICENSE.md)
 
-Copyright (c) 2024 UAB Synergy
+Copyright (c) 2024 SYNERGY
 
 Permission is hereby granted, free of charge, to any person obtaining a copy of this software and associated documentation files (the "Software"), to deal in the Software without restriction, including without limitation the rights to use, copy, modify, merge, publish, distribute, sublicense, and/or sell copies of the Software, and to permit persons to whom the Software is furnished to do so, subject to the following conditions:
 
@@ -1588,7 +1588,7 @@ THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLI
 
 - Built for the [n8n](https://n8n.io/) community
 - Integrates with [Ivanti Neurons for ITSM](https://www.ivanti.com/products/neurons-for-itsm)
-- Developed and maintained by [Synergy Consulting](https://www.synergy.eu/)
+- Developed and maintained by [SYNERGY](https://www.synergy.eu/)
 
 ---
 
