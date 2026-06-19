@@ -63,7 +63,51 @@ export async function ivantiApiRequest(
 			buildIvantiErrorMessage(response.statusCode, response.body),
 		);
 	}
-	return response.body;
+	return parseJsonBody(response.body);
+}
+
+/**
+ * Normalizes a response body into a parsed value.
+ *
+ * Because requests are issued with `json: false`, n8n returns the raw response
+ * body as a string. OData endpoints return JSON, so we parse it here so callers
+ * receive an object (e.g. `{ value: [...] }`) rather than a string. Non-JSON or
+ * empty bodies are returned unchanged.
+ */
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+function parseJsonBody(body: unknown): any {
+	if (typeof body !== 'string') {
+		return body;
+	}
+	const trimmed = body.trim();
+	if (trimmed === '') {
+		return body;
+	}
+	try {
+		return JSON.parse(trimmed);
+	} catch {
+		return body;
+	}
+}
+
+/**
+ * Safely extracts the `value` array from an OData list response.
+ * Throws a clear error if the response is not the expected `{ value: [...] }`
+ * envelope, instead of letting a spread of `undefined` fail with an opaque
+ * "is not iterable" message.
+ */
+function extractValueArray(
+	this: IExecuteFunctions | IExecuteSingleFunctions | IHookFunctions | ILoadOptionsFunctions | ITriggerFunctions | IPollFunctions,
+	response: SearchResponse,
+): IDataObject[] {
+	if (response && Array.isArray(response.value)) {
+		return response.value;
+	}
+	throw new NodeOperationError(
+		this.getNode(),
+		'Unexpected Ivanti API response: expected an OData list with a "value" array',
+		{ description: `Received: ${JSON.stringify(response)?.slice(0, 500)}` },
+	);
 }
 
 /**
@@ -95,10 +139,11 @@ export async function ivantiApiRequestAllItemsWithLimit(
 		qs["$skip"] = skip;
 
 		const response = await ivantiApiRequest.call(this, method, endpoint, qs, body) as SearchResponse;
-		returnData.push(...response.value);
-		skip += response.value.length;
+		const value = extractValueArray.call(this, response);
+		returnData.push(...value);
+		skip += value.length;
 
-		if (response.value.length < ODATA_BATCH_SIZE) {
+		if (value.length < ODATA_BATCH_SIZE) {
 			break;
 		}
 	}
@@ -136,10 +181,11 @@ export async function ivantiApiRequestAllItems(
 		qs["$skip"] = skip;
 
 		const response = await ivantiApiRequest.call(this, method, endpoint, qs, body) as SearchResponse;
-		returnData.push(...response.value);
-		skip += response.value.length;
+		const value = extractValueArray.call(this, response);
+		returnData.push(...value);
+		skip += value.length;
 
-		if (response.value.length < ODATA_BATCH_SIZE) {
+		if (value.length < ODATA_BATCH_SIZE) {
 			break;
 		}
 	}
@@ -167,7 +213,7 @@ export async function fetchRecords(
 	}
 	qs['$top'] = limit;
 	const response = (await ivantiApiRequest.call(this, 'GET', endpoint, qs, {})) as SearchResponse;
-	return response.value;
+	return extractValueArray.call(this, response);
 }
 
 
