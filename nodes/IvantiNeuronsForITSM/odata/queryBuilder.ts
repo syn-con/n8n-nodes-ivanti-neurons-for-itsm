@@ -35,25 +35,37 @@ export interface BuildODataQueryOptions {
 export function parseValue(
     this: QueryCtx,
     fieldType: string,
-    value: string,
+    value: unknown,
 ): string | number | boolean | null {
+    // The UI value can arrive as something other than a string (e.g. a number,
+    // boolean, null or undefined) depending on how the fixedCollection is
+    // populated. Normalize to a string first so the per-type parsers below never
+    // hit a runtime "x is not a function" type error.
+    if (value === undefined || value === null) {
+        throw new NodeOperationError(
+            this.getNode(),
+            `A value is required for a "${fieldType}" filter`,
+        );
+    }
+    const stringValue = typeof value === 'string' ? value : String(value);
+
     if (fieldType === 'string') {
-        return `'${value}'`;
+        return `'${stringValue}'`;
     }
     if (fieldType === 'number') {
-        const num = Number(value);
+        const num = Number(stringValue);
         if (isNaN(num)) {
-            throw new NodeOperationError(this.getNode(), `Invalid number: ${value}`);
+            throw new NodeOperationError(this.getNode(), `Invalid number: ${stringValue}`);
         }
         return num;
     }
     if (fieldType === 'boolean') {
-        return parseBoolean.call(this, value);
+        return parseBoolean.call(this, stringValue);
     }
     if (fieldType === 'date') {
-        const date = new Date(value);
+        const date = new Date(stringValue);
         if (isNaN(date.getTime())) {
-            throw new NodeOperationError(this.getNode(), `Invalid date: ${value}`);
+            throw new NodeOperationError(this.getNode(), `Invalid date: ${stringValue}`);
         }
         return date.toISOString();
     }
