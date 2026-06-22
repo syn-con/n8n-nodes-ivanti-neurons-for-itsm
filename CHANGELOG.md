@@ -10,6 +10,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Fixed
 - Search operation dropdown values now match the camelCase module export names (`fullTextSearchAcrossAllObjects`, `fullTextSearchInSingleObject`, `savedSearch`). Previously the lowercase values caused all three Search operations to fail at runtime with a `TypeError` and left their input fields hidden in the UI
 - The `node` field in each codex file (`*.node.json`) now uses the scoped npm package name `@synergyconsulting/n8n-nodes-ivanti-neurons-for-itsm` instead of the bare `n8n-nodes-ivanti-neurons-for-itsm` prefix
+- Documented the intent of the fallback `catch` blocks in `listSearch.ts` and `transports/index.ts` with inline comments, clarifying why a parse/lookup failure returns a safe fallback value instead of throwing
 
 ## [1.2.0] - 2026-06-19
 

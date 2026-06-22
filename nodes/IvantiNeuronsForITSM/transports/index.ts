@@ -91,6 +91,9 @@ function parseJsonBody(body: unknown): any {
 	try {
 		return JSON.parse(trimmed);
 	} catch {
+		// Not all endpoints return JSON (e.g. plain-text or HTML responses). A
+		// parse failure is expected for those, so we return the raw body unchanged
+		// and let the caller handle the non-JSON payload rather than failing here.
 		return body;
 	}
 }

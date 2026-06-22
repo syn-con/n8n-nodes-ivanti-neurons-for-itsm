@@ -71,6 +71,9 @@ function extractBoName(configOptions: string): string | null {
 		const boName = (additionalConfig as IDataObject[])?.[0]?.boName as string | undefined;
 		return boName ? boName.replace('#', '') : null;
 	} catch {
+		// ConfigOptions is free-form, optional metadata that is not always valid JSON.
+		// A parse failure simply means no BO name is available, so we return null and
+		// let the caller fall back to the generic dropdown label rather than failing.
 		return null;
 	}
 }
@@ -218,6 +221,11 @@ export async function getServiceRequestParametersSchema(this: ILoadOptionsFuncti
 		return { fields };
 
 	} catch {
+		// This populates a resourceMapper UI dropdown rather than executing a
+		// workflow. If the template lookup or field mapping fails, we return an
+		// empty schema so the editor degrades gracefully instead of throwing an
+		// uncatchable error into the n8n UI. The real failure surfaces at
+		// execution time, where errors are properly reported to the user.
 		return { fields: [] };
 	}
 }
@@ -286,6 +294,11 @@ export async function getServiceRequestParametersSimplifiedSchema(this: ILoadOpt
 		return { fields };
 
 	} catch {
+		// This populates a resourceMapper UI dropdown rather than executing a
+		// workflow. If the template lookup or field mapping fails, we return an
+		// empty schema so the editor degrades gracefully instead of throwing an
+		// uncatchable error into the n8n UI. The real failure surfaces at
+		// execution time, where errors are properly reported to the user.
 		return { fields: [] };
 	}
 }
