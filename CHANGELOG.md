@@ -5,6 +5,12 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.2.1] - 2026-06-22
+
+### Fixed
+- Search operation dropdown values now match the camelCase module export names (`fullTextSearchAcrossAllObjects`, `fullTextSearchInSingleObject`, `savedSearch`). Previously the lowercase values caused all three Search operations to fail at runtime with a `TypeError` and left their input fields hidden in the UI
+- The `node` field in each codex file (`*.node.json`) now uses the scoped npm package name `@synergyconsulting/n8n-nodes-ivanti-neurons-for-itsm` instead of the bare `n8n-nodes-ivanti-neurons-for-itsm` prefix
+
 ## [1.2.0] - 2026-06-19
 
 ### Changed
