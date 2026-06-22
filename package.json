@@ -1,6 +1,6 @@
 {
 	"name": "@synergyconsulting/n8n-nodes-ivanti-neurons-for-itsm",
-	"version": "1.2.1",
+	"version": "1.2.11",
 	"description": "Nodes for Ivanti Neurons for ITSM",
 	"license": "MIT",
 	"homepage": "https://github.com/syn-con/n8n-nodes-ivanti-neurons-for-itsm#readme",
