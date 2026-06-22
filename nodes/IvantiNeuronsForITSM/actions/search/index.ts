@@ -17,25 +17,25 @@ export const description: INodeProperties[] = [
         options: [
             {
                 name: 'Full Text Search Across All Objects',
-                value: 'fulltextsearchacrossallobjects',
+                value: 'fullTextSearchAcrossAllObjects',
                 description: 'Searches all business objects for the provided text',
                 action: 'Perform a full text search across all objects',
             },
             {
                 name: 'Full Text Search in Single Object',
-                value: 'fulltextsearchinsingleobject',
+                value: 'fullTextSearchInSingleObject',
                 description: 'Searches a specific business object for the provided text',
                 action: 'Perform a full text search in a single object',
             },
             //saved search
             {
                 name: 'Saved Search',
-                value: 'savedsearch',
+                value: 'savedSearch',
                 description: 'Searches for a saved search by name and GUID',
                 action: 'Perform a saved search',
             },
         ],
-        default: 'fulltextsearchacrossallobjects',
+        default: 'fullTextSearchAcrossAllObjects',
         displayOptions: {
             show: {
                 resource: ['search'],
