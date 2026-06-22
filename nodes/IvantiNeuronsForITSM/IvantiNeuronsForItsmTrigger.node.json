@@ -1,5 +1,5 @@
 {
-    "node": "n8n-nodes-ivanti-neurons-for-itsm.ivantiNeuronsForItsmPollingTrigger",
+    "node": "@synergyconsulting/n8n-nodes-ivanti-neurons-for-itsm.ivantiNeuronsForItsmPollingTrigger",
     "nodeVersion": "1.0",
     "codexVersion": "0.1",
     "categories": [
