@@ -7,7 +7,7 @@ import type {
 import { ivantiApiRequest } from '../../transports'
 
 import { NodeOperationError, updateDisplayOptions } from 'n8n-workflow';
-import { assertSafePathSegment, validateBusinessObject } from '../../common';
+import { assertSafePathSegment, validateBusinessObject, validateSavedSearchName } from '../../common';
 
 
 
@@ -35,7 +35,8 @@ export const properties: INodeProperties[] = [
         type: 'string',
         default: '',
         required: true,
-        description: 'The name of the saved search to execute',
+        placeholder: 'e.g. My_Active',
+        description: 'The name of the saved search to execute. Spaces are not allowed — write them as underscores (e.g. "My Active" becomes "My_Active").',
     },
     {
         displayName: 'Saved Search GUID',
@@ -62,7 +63,8 @@ export const description = updateDisplayOptions(displayOptions, properties);
  * and returns the matching records from `response.value`.
  *
  * @throws {NodeOperationError} when `searchObject`, `savedSearchName`, or
- *   `savedSearchGUID` are empty, or when the request fails
+ *   `savedSearchGUID` are empty, when `savedSearchName` contains spaces
+ *   (Ivanti encodes them as "_", e.g. "My_Active"), or when the request fails
  */
 export async function execute(this: IExecuteFunctions): Promise<INodeExecutionData[]> {
 
@@ -77,12 +79,12 @@ export async function execute(this: IExecuteFunctions): Promise<INodeExecutionDa
             validateBusinessObject.call(this, searchObject)
 
 
-            const savedSearchName = this.getNodeParameter('savedSearchName', i) as string;
-            if (savedSearchName === '') {
-                throw new NodeOperationError(this.getNode(), 'The "Saved Search Name" parameter is required!');
-            }
             assertSafePathSegment.call(this, searchObject, 'Business Object');
-            assertSafePathSegment.call(this, savedSearchName, 'Saved Search Name');
+
+            const savedSearchName = validateSavedSearchName.call(
+                this,
+                this.getNodeParameter('savedSearchName', i) as string,
+            );
 
             const savedSearchGUID = this.getNodeParameter('savedSearchGUID', i) as string;
 
@@ -91,7 +93,7 @@ export async function execute(this: IExecuteFunctions): Promise<INodeExecutionDa
             }
 
 
-            const response = await ivantiApiRequest.call(this, 'GET', `/odata/businessobject/${searchObject}/${savedSearchName}`, {}, { ActionId: savedSearchGUID });
+            const response = await ivantiApiRequest.call(this, 'GET', `/odata/businessobject/${searchObject}/${savedSearchName}`, { ActionId: savedSearchGUID }, {});
             const executionData = this.helpers.constructExecutionMetaData(
                 this.helpers.returnJsonArray(response.value),
                 { itemData: { item: i } },

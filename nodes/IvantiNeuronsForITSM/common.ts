@@ -181,3 +181,35 @@ export function validateBusinessObject(
 	}
 	return object;
 }
+
+/**
+ * Validates a saved-search name. Ivanti exposes saved searches as URL path
+ * segments in which spaces are replaced by underscores (e.g. a search called
+ * "My Active" is addressed as "My_Active"), so the name must be present and
+ * safe to interpolate into the path. Single-word names (e.g. "Active") are
+ * valid — the underscore is only required where the original name had a space.
+ *
+ * @param value - Raw saved-search parameter value
+ * @param label - Display name used in error messages (default "Saved Search Name")
+ * @returns The trimmed, validated saved-search name
+ * @throws {NodeOperationError} if the value is empty, contains spaces, or
+ *   contains characters that are unsafe in a URL path segment
+ */
+export function validateSavedSearchName(
+	this: IExecuteFunctions | IPollFunctions,
+	value: string,
+	label = 'Saved Search Name',
+): string {
+	const name = (value ?? '').trim();
+	if (name === '') {
+		throw new NodeOperationError(this.getNode(), `The "${label}" parameter is required`);
+	}
+	if (/\s/.test(name)) {
+		throw new NodeOperationError(
+			this.getNode(),
+			`The "${label}" must not contain spaces because Ivanti replaces them with "_" (e.g. "My Active" becomes "My_Active")`,
+		);
+	}
+	assertSafePathSegment.call(this, name, label);
+	return name;
+}

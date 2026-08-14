@@ -5,6 +5,12 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.2.12] - 2026-08-14
+
+### Fixed
+- The **Search → Saved Search** operation now validates the "Saved Search Name" parameter through a shared `validateSavedSearchName` helper: the value is trimmed, required, rejected if it contains spaces (Ivanti addresses saved searches by a path segment in which spaces are written as underscores, e.g. "My Active" becomes "My_Active"), and checked against the safe path-segment character set. Single-word names such as "Active" remain valid
+- The "Saved Search Name" field now carries a `My_Active` placeholder and explains the underscore convention in its description, so the naming rule is visible before the workflow runs
+
 ## [1.2.11] - 2026-06-22
 
 ### Fixed
