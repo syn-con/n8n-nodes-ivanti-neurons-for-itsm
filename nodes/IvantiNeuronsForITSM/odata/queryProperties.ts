@@ -50,12 +50,30 @@ export const odataListProperties: INodeProperties[] = [
         displayOptions: { show: { selectAllFields: [false] } },
     },
     {
+        displayName: 'Define Filter as JSON',
+        name: 'useRawFilter',
+        type: 'boolean',
+        default: false,
+        description: 'Whether to define the OData filter conditions as a JSON array instead of using the filter builder',
+    },
+    {
+        displayName: 'Raw Filter (JSON)',
+        name: 'rawFilter',
+        type: 'json',
+        default:
+            '[\n  {\n    "fieldName": "Status",\n    "fieldType": "string",\n    "operation": "eq",\n    "value": "Active",\n    "logicalOperator": "and"\n  }\n]',
+        description:
+            'Array of filter conditions. Each condition takes "fieldName", "operation" (eq, ne, gt, ge, lt, le, isnull, isnotnull), "value", and optionally "fieldType" (string, number, boolean, date; default string) and "logicalOperator" (and, or; default and). A single condition object is also accepted.',
+        displayOptions: { show: { useRawFilter: [true] } },
+    },
+    {
         displayName: 'OData Filter',
         name: 'odataFilter',
         placeholder: 'Add OData Filter',
         type: 'fixedCollection',
         default: [],
         typeOptions: { multipleValues: true },
+        displayOptions: { show: { useRawFilter: [false] } },
         options: [
             {
                 name: 'odataFilter',

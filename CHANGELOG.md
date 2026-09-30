@@ -5,6 +5,11 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.3.0] - 2026-09-30
+
+### Added
+- **Business Object → Get Many** and the **Polling Trigger** have a new "Define Filter as JSON" toggle. When it is on, a "Raw Filter (JSON)" field replaces the filter builder and takes the conditions as a JSON array (or a single object), which makes it possible to build filters from expressions. Each condition is checked against the same allowed operations, field types and logical operators as the filter builder
+
 ## [1.2.12] - 2026-08-14
 
 ### Fixed

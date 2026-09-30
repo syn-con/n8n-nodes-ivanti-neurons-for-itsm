@@ -282,6 +282,8 @@ Retrieve multiple records with powerful filtering and pagination.
 | Limit | number | Max records to return (when Return All = false) |
 | Select All Fields | boolean | Return all fields or specify subset |
 | Select Fields | collection | Array of field names to return |
+| Define Filter as JSON | boolean | Switch from the filter builder to a JSON filter |
+| Raw Filter (JSON) | json | Filter conditions as a JSON array (when Define Filter as JSON = true) |
 | OData Filter | collection | Structured filters (field, operator, value) |
 | Order By | string | Field name for sorting |
 | Order Direction | dropdown | `asc` or `desc` |
@@ -304,6 +306,21 @@ This generates:
 ```
 $filter=Priority eq 'High' and Status ne 'Closed'
 ```
+
+**Example Raw Filter (JSON)** (same fields as the filter builder; `fieldType` defaults to `string`, `logicalOperator` to `and`):
+```json
+[
+  { "fieldName": "Status", "operation": "ne", "value": "Closed" },
+  { "fieldName": "Priority", "fieldType": "number", "operation": "le", "value": 2, "logicalOperator": "or" }
+]
+```
+
+This generates:
+```
+$filter=Status ne 'Closed' or Priority le 2
+```
+
+The same options are available on the **Ivanti Neurons for ITSM Polling Trigger**.
 
 **n8n Expression Example**:
 ```javascript
