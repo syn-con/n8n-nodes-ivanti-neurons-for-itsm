@@ -2,11 +2,12 @@ import type {
     IExecuteFunctions,
     INodeExecutionData,
     INodeProperties,
+    JsonObject,
 } from 'n8n-workflow';
 
 import { ivantiApiRequest } from '../../transports'
 
-import { NodeOperationError, updateDisplayOptions } from 'n8n-workflow';
+import { NodeApiError, NodeOperationError, updateDisplayOptions } from 'n8n-workflow';
 
 /**
  * UI property definitions for the **Search → Full Text Search Across All Objects** operation.
@@ -71,7 +72,7 @@ export async function execute(this: IExecuteFunctions): Promise<INodeExecutionDa
         if (this.continueOnFail()) {
             returnData.push({ json: { error: (error as Error).message } });
         } else {
-            throw error;
+            throw new NodeApiError(this.getNode(), error as JsonObject);
         }
     }
 

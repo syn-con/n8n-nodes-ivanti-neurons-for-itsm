@@ -6,9 +6,10 @@ import type {
 	INodeTypeDescription,
 	IWebhookResponseData,
 	IHttpRequestOptions,
+	JsonObject,
 } from 'n8n-workflow';
 import { createHash, timingSafeEqual } from 'node:crypto';
-import { NodeOperationError } from 'n8n-workflow';
+import { NodeApiError, NodeConnectionTypes, NodeOperationError } from 'n8n-workflow';
 import { isValidIvantiGuid } from './common';
 
 
@@ -37,10 +38,12 @@ import { isValidIvantiGuid } from './common';
  * Webhook registration is fully managed by n8n; `checkExists`, `create`, and
  * `delete` all return `true` without making external API calls.
  */
+// Trigger nodes cannot be invoked as AI tools, so n8n's community review requires
+// them to omit usableAsTool; this lint rule does not distinguish trigger nodes.
+// eslint-disable-next-line @n8n/community-nodes/node-usable-as-tool
 export class IvantiNeuronsForItsmConnectorTrigger implements INodeType {
 	description: INodeTypeDescription = {
 		displayName: 'Ivanti Neurons for ITSM Connector Trigger',
-		usableAsTool: true,
 		name: 'ivantiNeuronsForItsmConnectorTrigger',
 		icon: { light: 'file:../../icons/synergy.svg', dark: 'file:../../icons/synergy.dark.svg' },
 		group: ['trigger'],
@@ -51,7 +54,7 @@ export class IvantiNeuronsForItsmConnectorTrigger implements INodeType {
 			name: 'Ivanti Neurons for ITSM Connector Trigger',
 		},
 		inputs: [],
-		outputs: ['main'],
+		outputs: [NodeConnectionTypes.Main],
 		credentials: [
 			{
 				name: 'ivantiNeuronsForItsmConnectorAuthApi',
@@ -223,7 +226,7 @@ export class IvantiNeuronsForItsmConnectorTrigger implements INodeType {
 				}));
 				return { noWebhookResponse: true };
 			}
-			throw error;
+			throw new NodeApiError(this.getNode(), error as JsonObject);
 		}
 	}
 }

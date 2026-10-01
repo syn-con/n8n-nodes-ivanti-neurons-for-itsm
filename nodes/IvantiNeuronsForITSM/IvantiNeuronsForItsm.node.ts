@@ -3,6 +3,7 @@ import {
     type INodeExecutionData,
     type INodeType,
     type INodeTypeDescription,
+    NodeConnectionTypes,
 } from 'n8n-workflow';
 
 import { router } from './actions/router';
@@ -48,8 +49,8 @@ export class IvantiNeuronsForItsm implements INodeType {
         defaults: {
             name: 'Ivanti Neurons for ITSM',
         },
-        inputs: ['main'],
-        outputs: ['main'],
+        inputs: [NodeConnectionTypes.Main],
+        outputs: [NodeConnectionTypes.Main],
         // Exposed as an AI-agent tool for all JSON-based resources (Business Object,
         // Relationship, Search, Service Request, Quick Action). NOTE: the Attachment
         // resource's "Upload" and "Read" operations move binary data, which cannot

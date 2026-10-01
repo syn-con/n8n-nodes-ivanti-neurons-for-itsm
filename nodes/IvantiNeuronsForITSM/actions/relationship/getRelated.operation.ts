@@ -4,9 +4,10 @@ import {
 	type IExecuteFunctions,
 	type INodeExecutionData,
 	type INodeProperties,
+	type JsonObject,
 } from 'n8n-workflow';
 
-import { NodeOperationError, updateDisplayOptions } from 'n8n-workflow';
+import { NodeApiError, NodeOperationError, updateDisplayOptions } from 'n8n-workflow';
 
 import { ivantiApiRequest } from '../../transports'
 import { assertSafeFieldName, assertSafePathSegment, assertSafeRecordId, validateBusinessObject } from '../../common';
@@ -175,7 +176,7 @@ export async function execute(this: IExecuteFunctions): Promise<INodeExecutionDa
 				returnData.push({ json: { error: (error as Error).message } });
 			}
 			else {
-				throw error;
+				throw new NodeApiError(this.getNode(), error as JsonObject);
 			}
 		}
 	}

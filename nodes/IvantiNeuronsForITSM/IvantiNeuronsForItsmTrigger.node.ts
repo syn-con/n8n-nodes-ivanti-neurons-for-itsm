@@ -5,7 +5,7 @@ import type {
 	IPollFunctions,
 	INodeExecutionData,
 } from 'n8n-workflow';
-import { NodeOperationError } from 'n8n-workflow';
+import { NodeConnectionTypes, NodeOperationError } from 'n8n-workflow';
 
 import { ivantiApiRequestAllItems, ivantiApiRequestAllItemsWithLimit } from './transports';
 import { odataListProperties } from './odata/queryProperties';
@@ -36,6 +36,9 @@ import { validateBusinessObject } from './common';
  * stored state, so you can inspect the data shape without waiting for the
  * interval.
  */
+// Trigger nodes cannot be invoked as AI tools, so n8n's community review requires
+// them to omit usableAsTool; this lint rule does not distinguish trigger nodes.
+// eslint-disable-next-line @n8n/community-nodes/node-usable-as-tool
 export class IvantiNeuronsForItsmTrigger implements INodeType {
 	description: INodeTypeDescription = {
 		displayName: 'Ivanti Neurons for ITSM Polling Trigger',
@@ -49,9 +52,8 @@ export class IvantiNeuronsForItsmTrigger implements INodeType {
 		defaults: {
 			name: 'Ivanti Neurons for ITSM Polling Trigger',
 		},
-		usableAsTool: true,
 		inputs: [],
-		outputs: ['main'],
+		outputs: [NodeConnectionTypes.Main],
 		credentials: [
 			{
 				name: 'ivantiNeuronsForItsmApiKeyApi',

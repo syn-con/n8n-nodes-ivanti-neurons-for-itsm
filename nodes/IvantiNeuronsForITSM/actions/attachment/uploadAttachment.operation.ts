@@ -2,9 +2,9 @@ import type {
     IExecuteFunctions,
     INodeExecutionData,
     INodeProperties,
-
+    JsonObject,
 } from 'n8n-workflow';
-import { NodeOperationError, updateDisplayOptions } from 'n8n-workflow';
+import { NodeApiError, NodeOperationError, updateDisplayOptions } from 'n8n-workflow';
 import { ivantiApiRequestFormData } from '../../transports';
 import { toActualObjectType, validateBusinessObject } from '../../common';
 
@@ -124,7 +124,7 @@ export async function execute(this: IExecuteFunctions): Promise<INodeExecutionDa
                 continue;
             }
 
-            throw error;
+            throw new NodeApiError(this.getNode(), error as JsonObject);
         }
 
     }

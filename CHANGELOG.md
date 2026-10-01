@@ -5,6 +5,14 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.3.1] - 2026-10-01
+
+### Fixed
+- Addressed n8n community package review findings:
+  - The **Polling Trigger** and **Connector Trigger** no longer set `usableAsTool`, because trigger nodes cannot be invoked as AI tools
+  - Node inputs and outputs use `NodeConnectionTypes.Main` from `n8n-workflow` instead of the string literal `'main'`
+  - Errors caught in every operation and in the Connector Trigger webhook are now thrown as `NodeApiError` instead of being re-thrown raw. Existing `NodeApiError`s pass through unchanged, and validation messages are kept
+
 ## [1.3.0] - 2026-09-30
 
 ### Added

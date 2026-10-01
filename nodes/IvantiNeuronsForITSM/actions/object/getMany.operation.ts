@@ -3,11 +3,12 @@ import type {
     IExecuteFunctions,
     INodeExecutionData,
     INodeProperties,
+    JsonObject,
 } from 'n8n-workflow';
 
 
 
-import { updateDisplayOptions } from 'n8n-workflow';
+import { NodeApiError, updateDisplayOptions } from 'n8n-workflow';
 import { odataListProperties } from '../../odata/queryProperties';
 import { buildODataQuery } from '../../odata/queryBuilder';
 
@@ -99,7 +100,7 @@ export async function execute(this: IExecuteFunctions): Promise<INodeExecutionDa
         if (this.continueOnFail()) {
             returnData.push({ json: { error: (error as Error).message } });
         } else {
-            throw error;
+            throw new NodeApiError(this.getNode(), error as JsonObject);
         }
     }
     return returnData;

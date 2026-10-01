@@ -3,11 +3,12 @@ import type {
     INodeExecutionData,
     INodeProperties,
     IDataObject,
+    JsonObject,
 } from 'n8n-workflow';
 
 import { ivantiApiRequest } from '../../transports'
 
-import { NodeOperationError, updateDisplayOptions } from 'n8n-workflow';
+import { NodeApiError, NodeOperationError, updateDisplayOptions } from 'n8n-workflow';
 
 /** Maximum page size accepted by the Ivanti full-text search endpoint. */
 const MAX_LIMIT = 25;
@@ -152,7 +153,7 @@ export async function execute(this: IExecuteFunctions): Promise<INodeExecutionDa
                 returnData.push({ json: { error: (error as Error).message } });
                 continue;
             }
-            throw error;
+            throw new NodeApiError(this.getNode(), error as JsonObject);
         }
     };
 

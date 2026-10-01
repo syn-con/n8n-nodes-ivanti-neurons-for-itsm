@@ -4,9 +4,10 @@ import  {
 	type INodeExecutionData,
 	type INodeProperties,
 	type IDataObject,
+	type JsonObject,
+	NodeApiError,
+	updateDisplayOptions,
 } from 'n8n-workflow';
-
-import {  updateDisplayOptions } from 'n8n-workflow';
 
 import { ivantiApiRequestAllItems } from '../../transports'
 
@@ -69,7 +70,7 @@ export async function execute(this: IExecuteFunctions): Promise<INodeExecutionDa
 				returnData.push({ json: { error: (error as Error).message } });
 				continue;
 			}
-			throw error;
+			throw new NodeApiError(this.getNode(), error as JsonObject);
 		}
 	}
 	return returnData;
