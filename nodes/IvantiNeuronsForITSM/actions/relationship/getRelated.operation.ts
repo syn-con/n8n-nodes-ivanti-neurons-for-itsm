@@ -10,6 +10,7 @@ import {
 import { NodeApiError, NodeOperationError, updateDisplayOptions } from 'n8n-workflow';
 
 import { ivantiApiRequest } from '../../transports'
+import { getOverrideHeaders } from '../requestOptions';
 import { assertSafeFieldName, assertSafePathSegment, assertSafeRecordId, validateBusinessObject } from '../../common';
 
 
@@ -144,7 +145,7 @@ export async function execute(this: IExecuteFunctions): Promise<INodeExecutionDa
 				qs["$select"] = select;
 
 			}
-			const response = await ivantiApiRequest.call(this, 'GET', url, qs);
+			const response = await ivantiApiRequest.call(this, 'GET', url, qs, undefined, getOverrideHeaders.call(this, i));
 			let responseData: GetRelatedResponse;
 			if (typeof response.value === 'string' && response.value.includes('No instances found.')) {
 				responseData = {

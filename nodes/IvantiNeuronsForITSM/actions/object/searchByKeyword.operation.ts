@@ -9,6 +9,7 @@ import type {
 import { NodeApiError, NodeOperationError, updateDisplayOptions } from 'n8n-workflow';
 
 import { ivantiApiRequestAllItems, ivantiApiRequestAllItemsWithLimit } from '../../transports'
+import { getOverrideHeaders } from '../requestOptions';
 import { validateBusinessObject } from '../../common';
 
 /**
@@ -167,6 +168,7 @@ export async function execute(this: IExecuteFunctions): Promise<INodeExecutionDa
                     this, 'GET', baseUrl,
                     { "$select": select || undefined, "$search": searchText },
                     undefined,
+                    getOverrideHeaders.call(this, i),
                 );
                 records.push(...allRecords);
             } else {
@@ -175,6 +177,7 @@ export async function execute(this: IExecuteFunctions): Promise<INodeExecutionDa
                     { "$select": select || undefined, "$search": searchText },
                     undefined,
                     limit,
+                    getOverrideHeaders.call(this, i),
                 );
                 records.push(...allRecords);
             }

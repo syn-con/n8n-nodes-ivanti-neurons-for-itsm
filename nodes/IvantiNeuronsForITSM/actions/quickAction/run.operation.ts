@@ -15,6 +15,7 @@ import {
 import { NodeApiError, updateDisplayOptions } from 'n8n-workflow';
 
 import { ivantiApiRequest } from '../../transports'
+import { getOverrideHeaders } from '../requestOptions';
 import { assertSafePathSegment, assertSafeRecordId, toActualObjectType, validateBusinessObject } from '../../common';
 
 
@@ -121,7 +122,7 @@ export async function execute(this: IExecuteFunctions): Promise<INodeExecutionDa
 				},
 				promptParams: null
 			}
-			const response = await ivantiApiRequest.call(this, 'POST', baseUrl, {}, quickActionPayload);
+			const response = await ivantiApiRequest.call(this, 'POST', baseUrl, {}, quickActionPayload, getOverrideHeaders.call(this, i));
 			const responseData = response as IDataObject;
 			const executionData = this.helpers.constructExecutionMetaData(
 				this.helpers.returnJsonArray(responseData),

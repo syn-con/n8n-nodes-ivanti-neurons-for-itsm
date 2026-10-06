@@ -255,6 +255,22 @@ Simple bearer-style authentication.
 
 ## Resources & Operations
 
+### Options (all resources except Automation)
+
+Every operation except those in the Automation resource has an **Options** section at the bottom of the node.
+
+| Option | Type | Description |
+|--------|------|-------------|
+| Override Headers | collection | HTTP headers (name and value) sent with every request the operation makes. A header set here replaces the default header of the same name. |
+
+If you add an `Authorization` header, it is sent as-is and the API key from the credential is **not** used. The credential still supplies the tenant URL and the SSL setting. Use this when a request has to run with a different key or token than the one stored in the credential.
+
+**Example**:
+```
+Name: Accept-Language
+Value: de-DE
+```
+
 ### Business Object
 
 Interact with any Ivanti OData business object. Common objects include:

@@ -7,6 +7,7 @@ import type {
 } from 'n8n-workflow';
 
 import { ivantiApiRequest } from '../../transports'
+import { getOverrideHeaders } from '../requestOptions';
 
 import { NodeApiError, NodeOperationError, updateDisplayOptions } from 'n8n-workflow';
 
@@ -114,7 +115,7 @@ export async function execute(this: IExecuteFunctions): Promise<INodeExecutionDa
                 body["$top"] = MAX_LIMIT;
                 while (true) {
                     body["$skip"] = skip;
-                    const response = await ivantiApiRequest.call(this, 'POST', '/rest/search/fulltext', {}, body);
+                    const response = await ivantiApiRequest.call(this, 'POST', '/rest/search/fulltext', {}, body, getOverrideHeaders.call(this, i));
                     if (!response?.data?.length) {
                         break;
                     }
@@ -131,7 +132,7 @@ export async function execute(this: IExecuteFunctions): Promise<INodeExecutionDa
                     const remaining = limit - data.length;
                     body["$top"] = Math.min(remaining, MAX_LIMIT);
                     body["$skip"] = skip;
-                    const response = await ivantiApiRequest.call(this, 'POST', '/rest/search/fulltext', {}, body);
+                    const response = await ivantiApiRequest.call(this, 'POST', '/rest/search/fulltext', {}, body, getOverrideHeaders.call(this, i));
                     if (!response?.data?.length) {
                         break;
                     }

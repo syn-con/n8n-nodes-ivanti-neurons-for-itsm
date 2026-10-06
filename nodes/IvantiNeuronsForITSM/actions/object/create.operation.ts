@@ -9,6 +9,7 @@ import {
 import { NodeApiError, updateDisplayOptions } from 'n8n-workflow';
 
 import { ivantiApiRequest } from '../../transports'
+import { getOverrideHeaders } from '../requestOptions';
 import { validateBusinessObject } from '../../common';
 
 /**
@@ -160,6 +161,7 @@ export async function execute(this: IExecuteFunctions): Promise<INodeExecutionDa
 				baseUrl,
 				{},
 				body,
+				getOverrideHeaders.call(this, i),
 			);
 			const responseData = response as IDataObject;
 			if (responseData['@odata.context']) {

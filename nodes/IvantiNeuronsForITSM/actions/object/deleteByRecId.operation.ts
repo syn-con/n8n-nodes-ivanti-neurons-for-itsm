@@ -8,6 +8,7 @@ import type {
 import { NodeApiError, updateDisplayOptions } from 'n8n-workflow';
 
 import { ivantiApiRequest } from '../../transports'
+import { getOverrideHeaders } from '../requestOptions';
 import { validateBusinessObject } from '../../common';
 
 /**
@@ -77,7 +78,7 @@ export async function execute(this: IExecuteFunctions): Promise<INodeExecutionDa
 
             const fullUrl = `${baseUrl}('${recordId}')`;
 
-            await ivantiApiRequest.call(this, 'DELETE', fullUrl, {}, undefined);
+            await ivantiApiRequest.call(this, 'DELETE', fullUrl, {}, undefined, getOverrideHeaders.call(this, i));
 
             returnData.push({ json: { success: true } });
 

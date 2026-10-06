@@ -10,6 +10,7 @@ import {
 
 import { NodeApiError, updateDisplayOptions } from 'n8n-workflow';
 import { ivantiApiRequest } from '../../transports';
+import { getOverrideHeaders } from '../requestOptions';
 import { serviceReqTemplateRLC, SearchResponse, escapeODataString} from '../../common';
 const serviceReqParamsUrl = "/rest/ServiceRequest/";
 const subscriptionUrl = "/rest/Template";
@@ -164,13 +165,14 @@ async function resolveEmployeeRecId(
 	this: IExecuteFunctions,
 	loginId: string,
 	cache: Map<string, string>,
+	headers: IDataObject,
 ): Promise<string> {
 	const cached = cache.get(loginId);
 	if (cached !== undefined) return cached;
 
 	const response = await ivantiApiRequest.call(this, 'GET', employeeUrl, {
 		$filter: `LoginID eq ${escapeODataString(loginId)}`,
-	}, {}) as SearchResponse;
+	}, {}, headers) as SearchResponse;
 
 	const employee = response?.value?.[0];
 	if (!employee) {
@@ -198,12 +200,13 @@ async function resolveSubscriptionId(
 	employeeRecId: string,
 	serviceReqTemplateId: string,
 	cache: Map<string, IDataObject[]>,
+	headers: IDataObject,
 ): Promise<string> {
 	let subscriptions = cache.get(loginId);
 
 	if (subscriptions === undefined) {
 		subscriptions = await ivantiApiRequest.call(
-			this, 'GET', `${subscriptionUrl}/${employeeRecId}/_All_`, {}, {},
+			this, 'GET', `${subscriptionUrl}/${employeeRecId}/_All_`, {}, {}, headers,
 		) as IDataObject[];
 		cache.set(loginId, subscriptions ?? []);
 	}
@@ -312,7 +315,7 @@ async function resolveParameters(
 			let validationList = templateValidationCache.get(id);
 			if (validationList === undefined) {
 				validationList = await ivantiApiRequest.call(
-					this, 'GET', `${serviceReqParamsUrl}${id}/ValidationList`, {}, {},
+					this, 'GET', `${serviceReqParamsUrl}${id}/ValidationList`, {}, {}, getOverrideHeaders.call(this, itemIndex),
 				) as IDataObject[][];
 				templateValidationCache.set(id, validationList ?? []);
 			}
@@ -364,14 +367,15 @@ export async function execute(this: IExecuteFunctions): Promise<INodeExecutionDa
 			const loginId = this.getNodeParameter('loginId', i) as string;
 			const mode = this.getNodeParameter('mode', i) as string;
 			const optionalParameters = this.getNodeParameter('optionalParameters', i, {}) as IDataObject;
+			const headers = getOverrideHeaders.call(this, i);
 
-			const employeeRecId = await resolveEmployeeRecId.call(this, loginId, employeeRecIdCache);
-			const subscriptionId = await resolveSubscriptionId.call(this, loginId, employeeRecId, serviceReqTemplateId, subscriptionCache);
+			const employeeRecId = await resolveEmployeeRecId.call(this, loginId, employeeRecIdCache, headers);
+			const subscriptionId = await resolveSubscriptionId.call(this, loginId, employeeRecId, serviceReqTemplateId, subscriptionCache, headers);
 
 			const body = buildRequestBody(employeeRecId, subscriptionId, optionalParameters);
 			body.parameters = await resolveParameters.call(this, i, mode, serviceReqTemplateId, validationListCache);
 
-			const response = await ivantiApiRequest.call(this, 'POST', '/rest/ServiceRequest/new', {}, body);
+			const response = await ivantiApiRequest.call(this, 'POST', '/rest/ServiceRequest/new', {}, body, headers);
 			if (!response) continue;
 			if (response.IsSuccess === false) {
 				throw new NodeOperationError(this.getNode(), response.Message as string);

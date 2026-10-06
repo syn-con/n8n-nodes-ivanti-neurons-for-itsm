@@ -10,6 +10,7 @@ import {
 
 import { NodeApiError, updateDisplayOptions } from 'n8n-workflow';
 import { ivantiApiRequest, ivantiApiRequestAllItems } from '../../transports';
+import { getOverrideHeaders } from '../requestOptions';
 import { serviceReqTemplateRLC } from '../../common';
 const serviceReqParamsUrl = "/odata/businessobject/ServiceReqTemplateParams";
 
@@ -232,7 +233,7 @@ export async function execute(this: IExecuteFunctions): Promise<INodeExecutionDa
 
 		body["parameters"] = await resolveParameters.call(this, i, mode, serviceReqTemplateId);
 
-		const response = await ivantiApiRequest.call(this, 'POST', '/rest/ServiceRequest/new', {}, body);
+		const response = await ivantiApiRequest.call(this, 'POST', '/rest/ServiceRequest/new', {}, body, getOverrideHeaders.call(this, i));
 		if (!response) continue;
 		if (response.IsSuccess === false) {
 			throw new NodeOperationError(this.getNode(), response.Message as string);
@@ -280,7 +281,11 @@ async function resolveParameters(
 	}
 
 	const parametersValue = this.getNodeParameter('parameters.value', itemIndex, {}) as IDataObject;
-	const parameterTypes = await fetchParameterTypes.call(this, serviceReqTemplateId);
+	const parameterTypes = await fetchParameterTypes.call(
+		this,
+		serviceReqTemplateId,
+		getOverrideHeaders.call(this, itemIndex),
+	);
 	const parameters: IDataObject = {};
 
 	for (const [key, rawValue] of Object.entries(parametersValue)) {
@@ -311,11 +316,12 @@ async function resolveParameters(
 async function fetchParameterTypes(
 	this: IExecuteFunctions,
 	serviceReqTemplateId: string,
+	headers: IDataObject,
 ): Promise<Record<string, string>> {
 	const schema = await ivantiApiRequestAllItems.call(this, 'GET', serviceReqParamsUrl, {
 		$filter: `ParentLink_RecID eq '${serviceReqTemplateId}'`,
 		$select: 'RecId,DisplayType',
-	}, undefined) as IDataObject[];
+	}, undefined, headers) as IDataObject[];
 
 	return Object.fromEntries(
 		schema.map((item) => [item.RecId as string, (item.DisplayType as string).toLowerCase()]),

@@ -10,6 +10,7 @@ import  {
 } from 'n8n-workflow';
 
 import { ivantiApiRequestAllItems } from '../../transports'
+import { getOverrideHeaders } from '../requestOptions';
 
 const serviceReqParamsUrl = "/odata/businessobject/ServiceReqTemplateParams";
 
@@ -55,7 +56,7 @@ export async function execute(this: IExecuteFunctions): Promise<INodeExecutionDa
 			const serviceReqTemplateId = this.getNodeParameter('serviceReqTemplateId', i) as string;
 			const response = await ivantiApiRequestAllItems.call(this, 'GET', serviceReqParamsUrl, {
 				$filter: `ParentLink_RecID eq '${serviceReqTemplateId}'`,
-			});
+			}, undefined, getOverrideHeaders.call(this, i));
 			if(response === undefined) {
 				continue;
 			}

@@ -29,7 +29,8 @@ const ODATA_BATCH_SIZE = 100;
  * @param endpoint - API path starting with `/`, e.g. `/odata/businessobject/Incidents`
  * @param qs       - OData / query-string parameters appended to the URL
  * @param body     - JSON request body (omit or pass `undefined` for GET/DELETE)
- * @returns Raw response from `httpRequestWithAuthentication`
+ * @param headers  - Extra headers; each one replaces a default header of the same name
+ * @returns Raw response from `sendRequest`
  */
 export async function ivantiApiRequest(
 	this: IExecuteFunctions | IExecuteSingleFunctions | IHookFunctions | ILoadOptionsFunctions | ITriggerFunctions | IPollFunctions,
@@ -37,6 +38,7 @@ export async function ivantiApiRequest(
 	endpoint: string,
 	qs: IDataObject = {},
 	body: IDataObject | undefined = undefined,
+	headers: IDataObject = {},
 ) {
 
 
@@ -57,8 +59,9 @@ export async function ivantiApiRequest(
 		returnFullResponse: true,
 		ignoreHttpStatusErrors: true
 	};
+	applyHeaders(options, headers);
 
-	const response = await this.helpers.httpRequestWithAuthentication.call(this, 'ivantiNeuronsForItsmApiKeyApi', options);
+	const response = await sendRequest.call(this, options);
 	if (response.statusCode < 200 || response.statusCode >= 300) {
 		// Hand the full response to NodeApiError so the HTTP status, headers and
 		// body are preserved in the execution log and UI, while still surfacing a
@@ -133,6 +136,7 @@ function extractValueArray(
  * @param qs       - Additional OData query parameters (`$filter`, `$select`, …)
  * @param body     - Optional request body
  * @param limit    - Maximum total records to return (default 100)
+ * @param headers  - Extra headers sent with every page request
  * @returns Flat array of record objects
  */
 export async function ivantiApiRequestAllItemsWithLimit(
@@ -142,6 +146,7 @@ export async function ivantiApiRequestAllItemsWithLimit(
 	qs: IDataObject = {},
 	body: IDataObject | undefined = undefined,
 	limit: number = 100,
+	headers: IDataObject = {},
 ) {
 	const returnData: IDataObject[] = [];
 	let skip = 0;
@@ -151,7 +156,7 @@ export async function ivantiApiRequestAllItemsWithLimit(
 		qs["$top"] = Math.min(remaining, ODATA_BATCH_SIZE);
 		qs["$skip"] = skip;
 
-		const response = await ivantiApiRequest.call(this, method, endpoint, qs, body) as SearchResponse;
+		const response = await ivantiApiRequest.call(this, method, endpoint, qs, body, headers) as SearchResponse;
 		const value = extractValueArray.call(this, response);
 		returnData.push(...value);
 		skip += value.length;
@@ -174,6 +179,7 @@ export async function ivantiApiRequestAllItemsWithLimit(
  * @param endpoint - OData collection path
  * @param qs       - Additional OData query parameters (`$filter`, `$select`, …)
  * @param body     - Optional request body
+ * @param headers  - Extra headers sent with every page request
  * @returns Flat array of all matching record objects
  */
 export async function ivantiApiRequestAllItems(
@@ -182,6 +188,7 @@ export async function ivantiApiRequestAllItems(
 	endpoint: string,
 	qs: IDataObject = {},
 	body: IDataObject | undefined = undefined,
+	headers: IDataObject = {},
 ) {
 	const returnData: IDataObject[] = [];
 	let skip = 0;
@@ -193,7 +200,7 @@ export async function ivantiApiRequestAllItems(
 		qs["$top"] = ODATA_BATCH_SIZE;
 		qs["$skip"] = skip;
 
-		const response = await ivantiApiRequest.call(this, method, endpoint, qs, body) as SearchResponse;
+		const response = await ivantiApiRequest.call(this, method, endpoint, qs, body, headers) as SearchResponse;
 		const value = extractValueArray.call(this, response);
 		returnData.push(...value);
 		skip += value.length;
@@ -215,17 +222,18 @@ export async function fetchRecords(
 	this: IExecuteFunctions | IExecuteSingleFunctions | IHookFunctions | ILoadOptionsFunctions | IPollFunctions,
 	endpoint: string,
 	qs: IDataObject,
-	options: { returnAll: boolean; limit?: number },
+	options: { returnAll: boolean; limit?: number; headers?: IDataObject },
 ): Promise<IDataObject[]> {
+	const headers = options.headers ?? {};
 	if (options.returnAll) {
-		return ivantiApiRequestAllItems.call(this, 'GET', endpoint, qs);
+		return ivantiApiRequestAllItems.call(this, 'GET', endpoint, qs, undefined, headers);
 	}
 	const limit = options.limit ?? 100;
 	if (limit > ODATA_BATCH_SIZE) {
-		return ivantiApiRequestAllItemsWithLimit.call(this, 'GET', endpoint, qs, undefined, limit);
+		return ivantiApiRequestAllItemsWithLimit.call(this, 'GET', endpoint, qs, undefined, limit, headers);
 	}
 	qs['$top'] = limit;
-	const response = (await ivantiApiRequest.call(this, 'GET', endpoint, qs, {})) as SearchResponse;
+	const response = (await ivantiApiRequest.call(this, 'GET', endpoint, qs, {}, headers)) as SearchResponse;
 	return extractValueArray.call(this, response);
 }
 
@@ -238,6 +246,7 @@ export async function fetchRecords(
  * @param method   - HTTP method (typically POST)
  * @param endpoint - API path
  * @param formData - Browser-compatible `FormData` object containing file and metadata fields
+ * @param headers  - Extra headers; each one replaces a default header of the same name
  * @returns Raw API response
  */
 export async function ivantiApiRequestFormData(
@@ -245,6 +254,7 @@ export async function ivantiApiRequestFormData(
 	method: IHttpRequestMethods,
 	endpoint: string,
 	formData: FormData,
+	headers: IDataObject = {},
 ) {
 	const credential = await this.getCredentials('ivantiNeuronsForItsmApiKeyApi');
 	if (credential === undefined) {
@@ -258,7 +268,8 @@ export async function ivantiApiRequestFormData(
 		json: false,
 		skipSslCertificateValidation: credential.skipSslVerification as boolean,
 	};
-	return this.helpers.httpRequestWithAuthentication.call(this, 'ivantiNeuronsForItsmApiKeyApi', options);
+	applyHeaders(options, headers);
+	return sendRequest.call(this, options);
 }
 
 /**
@@ -271,6 +282,7 @@ export async function ivantiApiRequestFormData(
  * @param method   - HTTP method (typically GET)
  * @param endpoint - API path
  * @param body     - Optional request body
+ * @param headers  - Extra headers; each one replaces a default header of the same name
  * @returns Full HTTP response object including `headers` and `body`
  */
 export async function ivantiApiRequestBinary(
@@ -278,6 +290,7 @@ export async function ivantiApiRequestBinary(
 	method: IHttpRequestMethods,
 	endpoint: string,
 	body: IDataObject = {},
+	headers: IDataObject = {},
 ) {
 
 	const credential = await this.getCredentials('ivantiNeuronsForItsmApiKeyApi');
@@ -299,6 +312,46 @@ export async function ivantiApiRequestBinary(
 		returnFullResponse: true,
 
 	};
+	applyHeaders(options, headers);
+	return sendRequest.call(this, options);
+}
+
+/**
+ * Adds caller-supplied headers to a request. Header names are matched without
+ * regard to case, so an override such as `accept` replaces an existing `Accept`
+ * rather than sending both.
+ */
+function applyHeaders(options: IHttpRequestOptions, headers: IDataObject): void {
+	const entries = Object.entries(headers);
+	if (entries.length === 0) return;
+	const merged: IDataObject = { ...(options.headers ?? {}) };
+	for (const [name, value] of entries) {
+		for (const existing of Object.keys(merged)) {
+			if (existing.toLowerCase() === name.toLowerCase()) delete merged[existing];
+		}
+		merged[name] = value;
+	}
+	options.headers = merged;
+}
+
+/**
+ * Sends a request to the Ivanti API.
+ *
+ * Normally the credential's API key is added as the Authorization header. When
+ * the caller has set its own Authorization header (through "Override Headers"),
+ * that header is sent as-is and the credential's API key is not used. The
+ * credential still supplies the tenant URL and the SSL setting.
+ */
+async function sendRequest(
+	this: IExecuteFunctions | IExecuteSingleFunctions | IHookFunctions | ILoadOptionsFunctions | ITriggerFunctions | IPollFunctions,
+	options: IHttpRequestOptions,
+) {
+	const hasOwnAuthorization = Object.keys(options.headers ?? {}).some(
+		(name) => name.toLowerCase() === 'authorization',
+	);
+	if (hasOwnAuthorization) {
+		return this.helpers.httpRequest(options);
+	}
 	return this.helpers.httpRequestWithAuthentication.call(this, 'ivantiNeuronsForItsmApiKeyApi', options);
 }
 

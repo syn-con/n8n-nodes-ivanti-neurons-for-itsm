@@ -10,6 +10,7 @@ import  {
 } from 'n8n-workflow';
 
 import { ivantiApiRequest } from '../../transports'
+import { getOverrideHeaders } from '../requestOptions';
 
 
 const baseUrl = "/rest/Template";
@@ -68,7 +69,7 @@ export async function execute(this: IExecuteFunctions): Promise<INodeExecutionDa
 			const employeeId = this.getNodeParameter('employeeId', i) as string;
 			const simplifyResponse = this.getNodeParameter('simplifyResponse', i) as boolean;
 			const fullUrl = `${baseUrl}/${employeeId}/_All_`;
-			const response = await ivantiApiRequest.call(this, 'GET', fullUrl, {}, undefined) as IDataObject[];
+			const response = await ivantiApiRequest.call(this, 'GET', fullUrl, {}, undefined, getOverrideHeaders.call(this, i)) as IDataObject[];
 
 			let responseData = response;
 			if (simplifyResponse) {

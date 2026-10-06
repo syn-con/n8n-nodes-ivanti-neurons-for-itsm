@@ -8,6 +8,7 @@ import type {
 import { NodeApiError, updateDisplayOptions } from 'n8n-workflow';
 
 import { ivantiApiRequest } from '../../transports'
+import { getOverrideHeaders } from '../requestOptions';
 
 /**
  * UI property definitions for the **Attachment → Delete** operation.
@@ -46,7 +47,7 @@ export async function execute(this: IExecuteFunctions): Promise<INodeExecutionDa
     for (let i = 0; i < items.length; i++) {
         try {
             const attachmentId = this.getNodeParameter('attachmentId', i) as string;
-            await ivantiApiRequest.call(this, 'DELETE', `/rest/Attachment?ID=${attachmentId}`, {}, undefined);
+            await ivantiApiRequest.call(this, 'DELETE', `/rest/Attachment?ID=${attachmentId}`, {}, undefined, getOverrideHeaders.call(this, i));
             const executionData = this.helpers.constructExecutionMetaData(
                 this.helpers.returnJsonArray({
                     Message: 'Attachment deleted successfully',

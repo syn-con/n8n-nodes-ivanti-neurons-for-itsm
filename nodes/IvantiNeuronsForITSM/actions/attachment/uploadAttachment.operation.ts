@@ -6,6 +6,7 @@ import type {
 } from 'n8n-workflow';
 import { NodeApiError, NodeOperationError, updateDisplayOptions } from 'n8n-workflow';
 import { ivantiApiRequestFormData } from '../../transports';
+import { getOverrideHeaders } from '../requestOptions';
 import { toActualObjectType, validateBusinessObject } from '../../common';
 
 /**
@@ -110,7 +111,7 @@ export async function execute(this: IExecuteFunctions): Promise<INodeExecutionDa
             const blob = new Blob([fileBuffer], { type: binaryData.mimeType });
             formData.append('file', blob, binaryData.fileName ?? 'upload');
 
-            const response = await ivantiApiRequestFormData.call(this, 'POST', '/rest/Attachment', formData);
+            const response = await ivantiApiRequestFormData.call(this, 'POST', '/rest/Attachment', formData, getOverrideHeaders.call(this, i));
             const executionData = this.helpers.constructExecutionMetaData(
                 this.helpers.returnJsonArray(response),
                 { itemData: { item: i } },

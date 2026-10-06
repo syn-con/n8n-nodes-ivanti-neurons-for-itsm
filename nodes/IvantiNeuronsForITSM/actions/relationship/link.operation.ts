@@ -10,6 +10,7 @@ import {
 import { NodeApiError, NodeOperationError, updateDisplayOptions } from 'n8n-workflow';
 
 import { ivantiApiRequest } from '../../transports'
+import { getOverrideHeaders } from '../requestOptions';
 import { assertSafePathSegment, assertSafeRecordId, validateBusinessObject } from '../../common';
 
 
@@ -108,7 +109,7 @@ export async function execute(this: IExecuteFunctions): Promise<INodeExecutionDa
 			assertSafeRecordId.call(this, targetRecordId);
 
 			const url = `/odata/businessobject/${businessObject}('${encodeURIComponent(recordId)}')/${relationship}('${encodeURIComponent(targetRecordId)}')/$Ref`;
-			const response = await ivantiApiRequest.call(this, 'PATCH', url, {}, undefined);
+			const response = await ivantiApiRequest.call(this, 'PATCH', url, {}, undefined, getOverrideHeaders.call(this, i));
 
 			const responseData = response as IDataObject;
 

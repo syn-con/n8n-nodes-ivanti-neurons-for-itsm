@@ -13,6 +13,7 @@ import { odataListProperties } from '../../odata/queryProperties';
 import { buildODataQuery } from '../../odata/queryBuilder';
 
 import { fetchRecords, } from '../../transports'
+import { getOverrideHeaders } from '../requestOptions';
 import { validateBusinessObject } from '../../common';
 
 /**
@@ -85,7 +86,7 @@ export async function execute(this: IExecuteFunctions): Promise<INodeExecutionDa
                 this,
                 baseUrl,
                 odataQuery,
-                { returnAll, limit },
+                { returnAll, limit, headers: getOverrideHeaders.call(this, i) },
             );
             records.push(...allRecords);
 

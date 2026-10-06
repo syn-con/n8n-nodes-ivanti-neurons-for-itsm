@@ -6,6 +6,7 @@ import type {
 } from 'n8n-workflow';
 
 import { ivantiApiRequest } from '../../transports'
+import { getOverrideHeaders } from '../requestOptions';
 
 import { NodeApiError, NodeOperationError, updateDisplayOptions } from 'n8n-workflow';
 import { assertSafePathSegment, validateBusinessObject, validateSavedSearchName } from '../../common';
@@ -94,7 +95,7 @@ export async function execute(this: IExecuteFunctions): Promise<INodeExecutionDa
             }
 
 
-            const response = await ivantiApiRequest.call(this, 'GET', `/odata/businessobject/${searchObject}/${savedSearchName}`, { ActionId: savedSearchGUID }, {});
+            const response = await ivantiApiRequest.call(this, 'GET', `/odata/businessobject/${searchObject}/${savedSearchName}`, { ActionId: savedSearchGUID }, {}, getOverrideHeaders.call(this, i));
             const executionData = this.helpers.constructExecutionMetaData(
                 this.helpers.returnJsonArray(response.value),
                 { itemData: { item: i } },

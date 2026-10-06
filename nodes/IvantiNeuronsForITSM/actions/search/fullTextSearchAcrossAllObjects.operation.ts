@@ -6,6 +6,7 @@ import type {
 } from 'n8n-workflow';
 
 import { ivantiApiRequest } from '../../transports'
+import { getOverrideHeaders } from '../requestOptions';
 
 import { NodeApiError, NodeOperationError, updateDisplayOptions } from 'n8n-workflow';
 
@@ -58,7 +59,7 @@ export async function execute(this: IExecuteFunctions): Promise<INodeExecutionDa
             }
             const responseAllData = await ivantiApiRequest.call(this, 'POST', `/rest/Search`, {}, {
                 "Text": searchTextAll,
-            });
+            }, getOverrideHeaders.call(this, i));
 
             const executionData = this.helpers.constructExecutionMetaData(
                 this.helpers.returnJsonArray(responseAllData),

@@ -7,6 +7,7 @@ import {
 } from 'n8n-workflow';
 
 import { router } from './actions/router';
+import { requestOptionsDescription } from './actions/requestOptions';
 
 import * as search from './actions/search';
 import * as object from './actions/object';
@@ -108,6 +109,7 @@ export class IvantiNeuronsForItsm implements INodeType {
             ...serviceReq.description,
             ...quickAction.description,
             ...automation.description,
+            ...requestOptionsDescription,
         ]
     }
 

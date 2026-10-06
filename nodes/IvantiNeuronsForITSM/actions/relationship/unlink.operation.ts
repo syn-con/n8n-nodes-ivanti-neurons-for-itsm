@@ -10,6 +10,7 @@ import {
 import { NodeApiError, NodeOperationError, updateDisplayOptions } from 'n8n-workflow';
 
 import { ivantiApiRequest } from '../../transports'
+import { getOverrideHeaders } from '../requestOptions';
 import { validateBusinessObject } from '../../common';
 
 
@@ -108,7 +109,7 @@ export async function execute(this: IExecuteFunctions): Promise<INodeExecutionDa
 
 			const url = `/odata/businessobject/${businessObject}('${recordId}')/${relationship}('${targetRecordId}')/$Ref`;
 
-			const response = await ivantiApiRequest.call(this, 'DELETE', url, {}, undefined);
+			const response = await ivantiApiRequest.call(this, 'DELETE', url, {}, undefined, getOverrideHeaders.call(this, i));
 
 			const responseData = response as IDataObject;
 

@@ -5,6 +5,12 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.4.0] - 2026-10-06
+
+### Added
+- Every operation except those in the **Automation** resource has a new **Options** section with **Override Headers**. Headers added there are sent with every request the operation makes and replace any default header of the same name. Header names are validated, and each input item can set its own headers through expressions
+- If **Override Headers** includes an `Authorization` header, that header is sent as-is and the API key from the credential is not used. The credential still supplies the tenant URL and the SSL setting
+
 ## [1.3.1] - 2026-10-01
 
 ### Fixed
