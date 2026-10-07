@@ -25,7 +25,7 @@ export const properties: INodeProperties[] = [
         default: "incident",
         type: "string",
         required: true,
-        noDataExpression: true,
+        noDataExpression: false,
         description: "The business object to retrieve. Must be the plural OData collection name (e.g. 'Incidents', 'Changes').",
 
         placeholder: "Incidents",

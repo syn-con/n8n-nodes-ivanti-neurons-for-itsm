@@ -5,6 +5,15 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.4.1] - 2026-10-07
+
+### Changed
+- The business object field now accepts expressions in these operations, so the object can be set from the incoming data (for example `{{ $json.objectName }}`) instead of being fixed when the workflow is built:
+  - **Business Object** → Get Many, Update and Delete ("Business Object")
+  - **Relationship** → Get Related and Link ("Business Object")
+  - **Search** → Full Text Search in Single Object ("Business Object")
+  - **Attachment** → Upload ("Object Type")
+
 ## [1.4.0] - 2026-10-06
 
 ### Added
