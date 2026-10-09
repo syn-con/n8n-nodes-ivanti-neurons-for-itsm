@@ -66,7 +66,13 @@ export async function router(this: IExecuteFunctions) {
 
 
 	} catch (error) {
-		throw new NodeOperationError(this.getNode(), error as Error);
+		// NodeOperationError cannot wrap a thrown value that is not an Error or a
+		// string (it crashes with "Cannot use 'in' operator ..."), so convert
+		// anything else to text first.
+		throw new NodeOperationError(
+			this.getNode(),
+			error instanceof Error ? error : String(error),
+		);
 	}
 	return [returnData];
 }

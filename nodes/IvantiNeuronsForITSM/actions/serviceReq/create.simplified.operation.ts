@@ -378,7 +378,11 @@ export async function execute(this: IExecuteFunctions): Promise<INodeExecutionDa
 			const response = await ivantiApiRequest.call(this, 'POST', '/rest/ServiceRequest/new', {}, body, headers);
 			if (!response) continue;
 			if (response.IsSuccess === false) {
-				throw new NodeOperationError(this.getNode(), response.Message as string);
+				const message =
+					typeof response.Message === 'string' && response.Message !== ''
+						? response.Message
+						: 'Ivanti could not create the service request and did not return a reason';
+				throw new NodeOperationError(this.getNode(), message, { itemIndex: i });
 			}
 
 			const executionData = this.helpers.constructExecutionMetaData(

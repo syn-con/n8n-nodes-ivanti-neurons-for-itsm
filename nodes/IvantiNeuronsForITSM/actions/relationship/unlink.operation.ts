@@ -111,16 +111,24 @@ export async function execute(this: IExecuteFunctions): Promise<INodeExecutionDa
 
 			const response = await ivantiApiRequest.call(this, 'DELETE', url, {}, undefined, getOverrideHeaders.call(this, i));
 
-			const responseData = response as IDataObject;
+			// A successful call may come back with an empty body (for example HTTP 204),
+			// so only a reply that carries an Ivanti status code other than ISM_2000
+			// counts as a failure. HTTP errors are already thrown by ivantiApiRequest.
+			const responseData: IDataObject =
+				typeof response === 'object' && response !== null ? (response as IDataObject) : {};
 
-
-			if (response.code != "ISM_2000") {
-				throw new NodeOperationError(this.getNode(), responseData.message as string);
+			if (responseData.code !== undefined && responseData.code !== 'ISM_2000') {
+				const message =
+					typeof responseData.message === 'string' && responseData.message !== ''
+						? responseData.message
+						: `Ivanti did not confirm the unlink (status code ${String(responseData.code)})`;
+				throw new NodeOperationError(this.getNode(), message, { itemIndex: i });
 			}
 
-
 			const executionData = this.helpers.constructExecutionMetaData(
-				this.helpers.returnJsonArray(responseData),
+				this.helpers.returnJsonArray(
+					Object.keys(responseData).length > 0 ? responseData : { success: true },
+				),
 				{ itemData: { item: i } },
 			);
 			returnData.push(...executionData);

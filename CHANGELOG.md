@@ -5,6 +5,14 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.4.2] - 2026-10-09
+
+### Fixed
+- Fixed the error "Cannot use 'in' operator to search for 'description' in undefined". It happened when Ivanti's reply had no message for the node to show:
+  - **Relationship → Link** and **Unlink** treated any reply without the `ISM_2000` status code as a failure, so a successful call that returned an empty body (for example HTTP 204) crashed. A successful reply with no body now outputs `{ "success": true }`, and only a reply carrying a different Ivanti status code is reported as an error
+  - **Service Request → Create** and **Create (Simplified)** now show "Ivanti could not create the service request and did not return a reason" when Ivanti rejects the request without a message
+  - The node's error handler now turns any unexpected thrown value into readable text instead of crashing on it
+
 ## [1.4.1] - 2026-10-07
 
 ### Changed
