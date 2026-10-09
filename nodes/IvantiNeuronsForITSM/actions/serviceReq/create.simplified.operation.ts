@@ -11,7 +11,7 @@ import {
 import { NodeApiError, updateDisplayOptions } from 'n8n-workflow';
 import { ivantiApiRequest } from '../../transports';
 import { getOverrideHeaders } from '../requestOptions';
-import { serviceReqTemplateRLC, SearchResponse, escapeODataString} from '../../common';
+import { serviceReqTemplateRLC, SearchResponse, escapeODataString, parseJsonObjectParameter } from '../../common';
 const serviceReqParamsUrl = "/rest/ServiceRequest/";
 const subscriptionUrl = "/rest/Template";
 const employeeUrl = "/odata/businessobject/Employees";
@@ -286,7 +286,12 @@ async function resolveParameters(
 	validationListCache: Map<string, Map<string, IDataObject[][]>>,
 ): Promise<IDataObject> {
 	if (mode === 'json') {
-		return this.getNodeParameter('jsonParameters', itemIndex, {}) as IDataObject;
+		return parseJsonObjectParameter.call(
+			this,
+			this.getNodeParameter('jsonParameters', itemIndex, {}),
+			'The "JSON" field',
+			itemIndex,
+		);
 	}
 
 	const parameters = this.getNodeParameter('parameters', itemIndex, {}) as IDataObject;
@@ -379,8 +384,8 @@ export async function execute(this: IExecuteFunctions): Promise<INodeExecutionDa
 			if (!response) continue;
 			if (response.IsSuccess === false) {
 				const message =
-					typeof response.Message === 'string' && response.Message !== ''
-						? response.Message
+					typeof response.ErrorText === 'string' && response.ErrorText !== ''
+						? response.ErrorText
 						: 'Ivanti could not create the service request and did not return a reason';
 				throw new NodeOperationError(this.getNode(), message, { itemIndex: i });
 			}

@@ -5,6 +5,12 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.4.3] - 2026-10-09
+
+### Fixed
+- **Service Request → Create** and **Create (Simplified)** now show Ivanti's actual reason when a service request is rejected. Ivanti returns the reason in the `ErrorText` field, but the node read `Message`, so the error always fell back to "Ivanti could not create the service request and did not return a reason"
+- In JSON mode, the "JSON" field of both operations is now read correctly whether it holds JSON text or an object from an expression (for example `{{ $json.parameters }}`). Previously the text was passed to Ivanti unparsed. An empty field means no parameters, and invalid JSON or a value that is not a JSON object stops with a clear error naming the field
+
 ## [1.4.2] - 2026-10-09
 
 ### Fixed

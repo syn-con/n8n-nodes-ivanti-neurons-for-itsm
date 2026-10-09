@@ -11,7 +11,7 @@ import {
 import { NodeApiError, updateDisplayOptions } from 'n8n-workflow';
 import { ivantiApiRequest, ivantiApiRequestAllItems } from '../../transports';
 import { getOverrideHeaders } from '../requestOptions';
-import { serviceReqTemplateRLC } from '../../common';
+import { parseJsonObjectParameter, serviceReqTemplateRLC } from '../../common';
 const serviceReqParamsUrl = "/odata/businessobject/ServiceReqTemplateParams";
 
 /**
@@ -226,27 +226,22 @@ export async function execute(this: IExecuteFunctions): Promise<INodeExecutionDa
 			if (optionalParameters.localOffset) {
 				body["localOffset"] = optionalParameters.localOffset;
 			}
+			body["parameters"] = await resolveParameters.call(this, i, mode, serviceReqTemplateId);
 
-
-
-
-
-		body["parameters"] = await resolveParameters.call(this, i, mode, serviceReqTemplateId);
-
-		const response = await ivantiApiRequest.call(this, 'POST', '/rest/ServiceRequest/new', {}, body, getOverrideHeaders.call(this, i));
-		if (!response) continue;
-		if (response.IsSuccess === false) {
-			const message =
-				typeof response.Message === 'string' && response.Message !== ''
-					? response.Message
-					: 'Ivanti could not create the service request and did not return a reason';
-			throw new NodeOperationError(this.getNode(), message, { itemIndex: i });
-		}
-		const executionData = this.helpers.constructExecutionMetaData(
-			this.helpers.returnJsonArray(response as IDataObject),
-			{ itemData: { item: i } },
-		);
-		returnData.push(...executionData);
+			const response = await ivantiApiRequest.call(this, 'POST', '/rest/ServiceRequest/new', {}, body, getOverrideHeaders.call(this, i));
+			if (!response) continue;
+			if (response.IsSuccess === false) {
+				const message =
+					typeof response.ErrorText === 'string' && response.ErrorText !== ''
+						? response.ErrorText
+						: 'Ivanti could not create the service request and did not return a reason';
+				throw new NodeOperationError(this.getNode(), message, { itemIndex: i });
+			}
+			const executionData = this.helpers.constructExecutionMetaData(
+				this.helpers.returnJsonArray(response as IDataObject),
+				{ itemData: { item: i } },
+			);
+			returnData.push(...executionData);
 		} catch (error) {
 			if (this.continueOnFail()) {
 				returnData.push({ json: { error: (error as Error).message } });
@@ -281,7 +276,12 @@ async function resolveParameters(
 	serviceReqTemplateId: string,
 ): Promise<IDataObject> {
 	if (mode === 'json') {
-		return this.getNodeParameter('jsonParameters', itemIndex, {}) as IDataObject;
+		return parseJsonObjectParameter.call(
+			this,
+			this.getNodeParameter('jsonParameters', itemIndex, {}),
+			'The "JSON" field',
+			itemIndex,
+		);
 	}
 
 	const parametersValue = this.getNodeParameter('parameters.value', itemIndex, {}) as IDataObject;

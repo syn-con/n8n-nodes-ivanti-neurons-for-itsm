@@ -1,4 +1,4 @@
-import { IDataObject, NodeOperationError } from "n8n-workflow"
+import { IDataObject, jsonParse, NodeOperationError } from "n8n-workflow"
 import type { IExecuteFunctions, INodeProperties, IPollFunctions, ITriggerFunctions } from 'n8n-workflow';
 
 /**
@@ -212,4 +212,37 @@ export function validateSavedSearchName(
 	}
 	assertSafePathSegment.call(this, name, label);
 	return name;
+}
+
+/**
+ * Reads a `json`-type node parameter as an object.
+ *
+ * The value arrives as text when typed into the field, but as an object when it
+ * comes from an expression such as `{{ $json.params }}`, so both are accepted.
+ * An empty value means "no parameters" and returns an empty object.
+ *
+ * @throws {NodeOperationError} when the text is not valid JSON or is not a JSON object
+ */
+export function parseJsonObjectParameter(
+	this: IExecuteFunctions,
+	value: unknown,
+	label: string,
+	itemIndex: number,
+): IDataObject {
+	if (value === undefined || value === null) return {};
+	if (typeof value === 'object' && !Array.isArray(value)) return value as IDataObject;
+
+	if (typeof value === 'string') {
+		if (value.trim() === '') return {};
+		let parsed: unknown;
+		try {
+			parsed = jsonParse(value);
+		} catch {
+			throw new NodeOperationError(this.getNode(), `${label} is not valid JSON`, { itemIndex });
+		}
+		if (typeof parsed === 'object' && parsed !== null && !Array.isArray(parsed)) {
+			return parsed as IDataObject;
+		}
+	}
+	throw new NodeOperationError(this.getNode(), `${label} must be a JSON object`, { itemIndex });
 }
