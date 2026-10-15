@@ -224,7 +224,7 @@ export function validateSavedSearchName(
  * @throws {NodeOperationError} when the text is not valid JSON or is not a JSON object
  */
 export function parseJsonObjectParameter(
-	this: IExecuteFunctions,
+	this: IExecuteFunctions | IPollFunctions,
 	value: unknown,
 	label: string,
 	itemIndex: number,

@@ -5,6 +5,17 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.5.0] - 2026-10-15
+
+### Added
+- New node version **1.1** for the **Ivanti Neurons for ITSM** node and the **Polling Trigger**. Workflows saved with version 1 keep working exactly as before; nodes added from now on use version 1.1
+- Version 1.1 adds a **Mode** field to **Business Object → Get Many** and the **Polling Trigger**:
+  - **Manual** – the existing field-by-field builder (Select Fields, OData Filter, Order By)
+  - **JSON** – an **OData Query (JSON)** field holding native OData query options such as `$filter`, `$select` and `$orderby`. They are sent to Ivanti exactly as written, without validation or transformation, so any OData syntax Ivanti supports can be used (for example `contains(Subject,'printer')`). Paging stays with Return All and Limit, so `$top` and `$skip` are rejected with a clear error
+
+### Removed
+- In version 1.1, the **Define Filter as JSON** toggle and its **Raw Filter (JSON)** field are no longer shown; JSON mode replaces them. They remain available in version 1
+
 ## [1.4.3] - 2026-10-09
 
 ### Fixed

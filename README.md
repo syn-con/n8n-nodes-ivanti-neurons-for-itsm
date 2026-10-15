@@ -296,13 +296,15 @@ Retrieve multiple records with powerful filtering and pagination.
 | Business Object | string | Plural entity name (e.g., `Incidents`) |
 | Return All | boolean | If true, fetch all records across all pages |
 | Limit | number | Max records to return (when Return All = false) |
-| Select All Fields | boolean | Return all fields or specify subset |
-| Select Fields | collection | Array of field names to return |
-| Define Filter as JSON | boolean | Switch from the filter builder to a JSON filter |
-| Raw Filter (JSON) | json | Filter conditions as a JSON array (when Define Filter as JSON = true) |
-| OData Filter | collection | Structured filters (field, operator, value) |
-| Order By | string | Field name for sorting |
-| Order Direction | dropdown | `asc` or `desc` |
+| Mode | dropdown | *Node version 1.1+.* `Manual` (build the query field by field) or `JSON` (write the OData query yourself) |
+| OData Query (JSON) | json | *JSON mode.* OData query options sent to Ivanti exactly as written |
+| Select All Fields | boolean | *Manual mode.* Return all fields or specify subset |
+| Select Fields | collection | *Manual mode.* Array of field names to return |
+| OData Filter | collection | *Manual mode.* Structured filters (field, operator, value) |
+| Order By | string | *Manual mode.* Field name for sorting |
+| Order Direction | dropdown | *Manual mode.* `asc` or `desc` |
+| Define Filter as JSON | boolean | *Node version 1 only.* Switch from the filter builder to a JSON filter |
+| Raw Filter (JSON) | json | *Node version 1 only.* Filter conditions as a JSON array (when Define Filter as JSON = true) |
 
 **Example OData Filter**:
 ```
@@ -323,7 +325,7 @@ This generates:
 $filter=Priority eq 'High' and Status ne 'Closed'
 ```
 
-**Example Raw Filter (JSON)** (same fields as the filter builder; `fieldType` defaults to `string`, `logicalOperator` to `and`):
+**Example Raw Filter (JSON)** (node version 1 only; same fields as the filter builder; `fieldType` defaults to `string`, `logicalOperator` to `and`):
 ```json
 [
   { "fieldName": "Status", "operation": "ne", "value": "Closed" },
@@ -335,6 +337,25 @@ This generates:
 ```
 $filter=Status ne 'Closed' or Priority le 2
 ```
+
+**JSON mode (node version 1.1+)**: set **Mode** to `JSON` and write the OData query options yourself. They are sent to Ivanti exactly as written, so any OData syntax Ivanti supports can be used, including functions the filter builder does not offer (such as `contains`). Paging stays with **Return All** and **Limit**, so `$top` and `$skip` cannot be set here.
+
+```json
+{
+  "$filter": "Status eq 'Active' and contains(Subject,'printer')",
+  "$select": "RecId,Subject,Status",
+  "$orderby": "CreatedDateTime desc"
+}
+```
+
+This sends:
+```
+$filter=Status eq 'Active' and contains(Subject,'printer')&$select=RecId,Subject,Status&$orderby=CreatedDateTime desc
+```
+
+Because nothing is checked or escaped in JSON mode, quote text values yourself (`'Active'`) and double any single quote inside them (`'O''Brien'`).
+
+**Node versions**: workflows created before version 1.1 keep version 1, with the "Define Filter as JSON" toggle and no Mode field. New nodes are added as version 1.1.
 
 The same options are available on the **Ivanti Neurons for ITSM Polling Trigger**.
 

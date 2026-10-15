@@ -46,7 +46,7 @@ export class IvantiNeuronsForItsmTrigger implements INodeType {
 		name: 'ivantiNeuronsForItsmTrigger',
 		icon: { light: 'file:../../icons/ivant-neurons-for-itsm.svg', dark: 'file:../../icons/ivant-neurons-for-itsm.dark.svg' },
 		group: ['trigger'],
-		version: 1,
+		version: [1, 1.1],
 		subtitle: '=Poll: {{$parameter["object"]}} every {{$parameter["pollInterval"]}} min',
 		description: 'Polls Ivanti Neurons for ITSM on a configurable interval and emits new records.',
 		defaults: {

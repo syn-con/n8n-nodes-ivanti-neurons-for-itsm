@@ -1,6 +1,6 @@
 import type { IDataObject, IExecuteFunctions, IPollFunctions } from 'n8n-workflow';
 import { jsonParse, NodeOperationError } from 'n8n-workflow';
-import { assertSafeFieldName, escapeODataString, parseBoolean } from '../common';
+import { assertSafeFieldName, escapeODataString, parseBoolean, parseJsonObjectParameter } from '../common';
 
 
 /** Context shared by execute (action) and poll (trigger) callers. */
@@ -172,6 +172,49 @@ export function parseRawFilter(this: QueryCtx, raw: unknown): ODataFilterEntry[]
     });
 }
 
+/** Query options owned by Return All / Limit paging. */
+const PAGING_OPTIONS = ['$top', '$skip'];
+
+/**
+ * Reads the "OData Query (JSON)" parameter (JSON mode, node version 1.1+).
+ *
+ * The query is passed to Ivanti exactly as written: no field validation, value
+ * quoting or other transformation. Only the shape is checked: it must be a JSON
+ * object of plain values, and must not set `$top` / `$skip`, which Return All
+ * and Limit use for paging.
+ *
+ * @throws {NodeOperationError} when the JSON is invalid, a value is not a plain
+ *   value, or a paging option is set
+ */
+export function parseNativeODataQuery(
+    this: QueryCtx,
+    raw: unknown,
+    itemIndex: number,
+): IDataObject {
+    const parsed = parseJsonObjectParameter.call(this, raw, 'The "OData Query (JSON)" field', itemIndex);
+
+    const query: IDataObject = {};
+    for (const [key, value] of Object.entries(parsed)) {
+        if (PAGING_OPTIONS.includes(key.toLowerCase())) {
+            throw new NodeOperationError(
+                this.getNode(),
+                `"${key}" cannot be set in the OData query`,
+                { itemIndex, description: 'Paging is controlled by Return All and Limit' },
+            );
+        }
+        if (value === undefined || value === null) continue;
+        if (typeof value === 'object') {
+            throw new NodeOperationError(
+                this.getNode(),
+                `The OData query option "${key}" must be text, a number or true/false`,
+                { itemIndex },
+            );
+        }
+        query[key] = value;
+    }
+    return query;
+}
+
 /**
  * Assembles an OData query object ($select, $filter, $orderby) from the node UI inputs.
  *
@@ -186,6 +229,15 @@ export function buildODataQuery(
     itemIndex: number,
     options: BuildODataQueryOptions = {},
 ): IDataObject {
+    const nodeVersion = this.getNode().typeVersion;
+    if (nodeVersion >= 1.1 && this.getNodeParameter('queryMode', itemIndex, 'manual') === 'json') {
+        return parseNativeODataQuery.call(
+            this,
+            this.getNodeParameter('odataQuery', itemIndex, '{}'),
+            itemIndex,
+        );
+    }
+
     const query: IDataObject = {};
 
     const selectAllFields = this.getNodeParameter('selectAllFields', itemIndex) as boolean;
@@ -204,7 +256,9 @@ export function buildODataQuery(
         query['$select'] = fieldNames.join(',');
     }
 
-    const useRawFilter = this.getNodeParameter('useRawFilter', itemIndex, false) as boolean;
+    // The "Define Filter as JSON" toggle only exists on version 1.
+    const useRawFilter =
+        nodeVersion < 1.1 && (this.getNodeParameter('useRawFilter', itemIndex, false) as boolean);
     const odataFilterCollection = useRawFilter
         ? parseRawFilter.call(this, this.getNodeParameter('rawFilter', itemIndex, '[]'))
         : (this.getNodeParameter('odataFilter.odataFilter', itemIndex, []) as ODataFilterEntry[]);

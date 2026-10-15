@@ -1,9 +1,25 @@
 import type { INodeProperties } from 'n8n-workflow';
 
+/** Shows a parameter only on node version 1.1 and later. */
+const FROM_V1_1 = { '@version': [{ _cnd: { gte: 1.1 } }] };
+/** Shows a parameter only on node version 1 (kept for existing workflows). */
+const BEFORE_V1_1 = { '@version': [{ _cnd: { lt: 1.1 } }] };
 /**
- * Shared OData list properties (Return All / Limit / Select / Filter / Order By).
+ * Hides a Manual-mode parameter in JSON mode. A `hide` rule is ignored when the
+ * parameter it checks has no value, so on version 1 (where `queryMode` does not
+ * exist) these parameters stay visible.
+ */
+const HIDE_IN_JSON_MODE = { queryMode: ['json'] };
+
+/**
+ * Shared OData list properties (Return All / Limit / Mode / Select / Filter / Order By).
  * The `object` (Business Object) property is intentionally NOT included here so
  * each caller can set its own default/placeholder; spread it in alongside this array.
+ *
+ * Version 1.1 adds the Mode switch:
+ * - **Manual**: the field-by-field builder (Select Fields, OData Filter, Order By)
+ * - **JSON**: a native OData query object sent to Ivanti exactly as written
+ * Version 1 keeps the "Define Filter as JSON" toggle instead.
  */
 export const odataListProperties: INodeProperties[] = [
     {
@@ -24,11 +40,42 @@ export const odataListProperties: INodeProperties[] = [
         displayOptions: { show: { returnAll: [false] } },
     },
     {
+        displayName: 'Mode',
+        name: 'queryMode',
+        type: 'options',
+        noDataExpression: true,
+        default: 'manual',
+        options: [
+            {
+                name: 'Manual',
+                value: 'manual',
+                description: 'Build the query field by field',
+            },
+            {
+                name: 'JSON',
+                value: 'json',
+                description: 'Write the OData query yourself; it is sent to Ivanti exactly as written',
+            },
+        ],
+        displayOptions: { show: FROM_V1_1 },
+    },
+    {
+        displayName: 'OData Query (JSON)',
+        name: 'odataQuery',
+        type: 'json',
+        default:
+            '{\n  "$filter": "Status eq \'Active\'",\n  "$select": "RecId,Subject,Status",\n  "$orderby": "CreatedDateTime desc"\n}',
+        description:
+            'OData query options sent to Ivanti exactly as written, for example "$filter", "$select" and "$orderby". Any OData syntax Ivanti supports can be used. Paging ("$top" and "$skip") is controlled by Return All and Limit.',
+        displayOptions: { show: { ...FROM_V1_1, queryMode: ['json'] } },
+    },
+    {
         displayName: 'Select All Fields',
         name: 'selectAllFields',
         type: 'boolean',
         default: true,
         description: 'Whether to select all fields or not',
+        displayOptions: { hide: HIDE_IN_JSON_MODE },
     },
     {
         displayName: 'Select Fields',
@@ -47,7 +94,7 @@ export const odataListProperties: INodeProperties[] = [
                 ],
             },
         ],
-        displayOptions: { show: { selectAllFields: [false] } },
+        displayOptions: { show: { selectAllFields: [false] }, hide: HIDE_IN_JSON_MODE },
     },
     {
         displayName: 'Define Filter as JSON',
@@ -55,6 +102,7 @@ export const odataListProperties: INodeProperties[] = [
         type: 'boolean',
         default: false,
         description: 'Whether to define the OData filter conditions as a JSON array instead of using the filter builder',
+        displayOptions: { show: BEFORE_V1_1 },
     },
     {
         displayName: 'Raw Filter (JSON)',
@@ -64,7 +112,7 @@ export const odataListProperties: INodeProperties[] = [
             '[\n  {\n    "fieldName": "Status",\n    "fieldType": "string",\n    "operation": "eq",\n    "value": "Active",\n    "logicalOperator": "and"\n  }\n]',
         description:
             'Array of filter conditions. Each condition takes "fieldName", "operation" (eq, ne, gt, ge, lt, le, isnull, isnotnull), "value", and optionally "fieldType" (string, number, boolean, date; default string) and "logicalOperator" (and, or; default and). A single condition object is also accepted.',
-        displayOptions: { show: { useRawFilter: [true] } },
+        displayOptions: { show: { ...BEFORE_V1_1, useRawFilter: [true] } },
     },
     {
         displayName: 'OData Filter',
@@ -73,7 +121,10 @@ export const odataListProperties: INodeProperties[] = [
         type: 'fixedCollection',
         default: [],
         typeOptions: { multipleValues: true },
-        displayOptions: { show: { useRawFilter: [false] } },
+        // `hide` rather than `show: { useRawFilter: [false] }`: from version 1.1
+        // the toggle does not exist, and a `show` rule on a missing value would
+        // hide the builder as well.
+        displayOptions: { hide: { useRawFilter: [true], ...HIDE_IN_JSON_MODE } },
         options: [
             {
                 name: 'odataFilter',
@@ -124,6 +175,7 @@ export const odataListProperties: INodeProperties[] = [
         default: '',
         description: 'Field to order results by',
         placeholder: 'Name',
+        displayOptions: { hide: HIDE_IN_JSON_MODE },
     },
     {
         displayName: 'Order Direction',
@@ -131,5 +183,6 @@ export const odataListProperties: INodeProperties[] = [
         type: 'options',
         default: 'asc',
         options: [{ name: 'Ascending', value: 'asc' }, { name: 'Descending', value: 'desc' }],
+        displayOptions: { hide: HIDE_IN_JSON_MODE },
     },
 ];
