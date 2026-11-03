@@ -1,0 +1,121 @@
+name: Bug report
+description: A wrong result, a crash, a failed run or an unsafe request from a concrete input
+title: "<Component> › <Operation>: <symptom> when <condition>"
+labels: ["bug"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        One issue per problem. Search the open and closed issues first. Redact tenant host names, RecIds, keys and record text.
+  - type: dropdown
+    id: component
+    attributes:
+      label: Component
+      options:
+        - Business Object
+        - Relationship
+        - Attachment
+        - Service Request
+        - Search
+        - Quick Action
+        - Automation
+        - Polling Trigger
+        - Connector Trigger
+        - Credentials
+        - Transport
+        - Query Builder
+        - Docs
+        - Repo
+    validations:
+      required: true
+  - type: input
+    id: operation
+    attributes:
+      label: Operation and node version
+      description: For example "Get Many, node version 1.1, JSON mode"
+    validations:
+      required: true
+  - type: input
+    id: package-version
+    attributes:
+      label: Package version
+      placeholder: "1.5.0"
+    validations:
+      required: true
+  - type: input
+    id: n8n
+    attributes:
+      label: n8n version and mode
+      placeholder: "2.44.7, queue mode"
+    validations:
+      required: true
+  - type: dropdown
+    id: ivanti
+    attributes:
+      label: Ivanti deployment
+      options:
+        - Cloud
+        - On-premises
+        - Not reproduced against a tenant (found by reading the code)
+    validations:
+      required: true
+  - type: textarea
+    id: summary
+    attributes:
+      label: Summary
+      description: One or two sentences, what is wrong and what it costs the user
+    validations:
+      required: true
+  - type: textarea
+    id: steps
+    attributes:
+      label: Steps to reproduce
+      description: Numbered and minimal. The node's parameters as JSON, the input item, the action.
+      placeholder: |
+        1. Add a Business Object › Search by Keyword node with `{ "object": "incidents", "searchText": "printer", "returnAll": true }`
+        2. Run it with one input item
+    validations:
+      required: true
+  - type: textarea
+    id: expected
+    attributes:
+      label: Expected
+    validations:
+      required: true
+  - type: textarea
+    id: actual
+    attributes:
+      label: Actual
+      description: Quote the error text or the wrong output in a fenced block
+    validations:
+      required: true
+  - type: textarea
+    id: evidence
+    attributes:
+      label: Evidence
+      description: File and line at a tag, with the line quoted. Link the n8n source for a claim about n8n, the Ivanti docs page for a claim about Ivanti.
+      placeholder: |
+        `nodes/IvantiNeuronsForITSM/actions/object/searchByKeyword.operation.ts:150` at `1.5.0`:
+        ```ts
+        const limit = this.getNodeParameter('limit', i) as number;
+        ```
+  - type: textarea
+    id: logs
+    attributes:
+      label: Logs
+      description: Text in a fenced block; wrap long logs in <details>
+  - type: textarea
+    id: affects
+    attributes:
+      label: Affects
+      description: Which operations and node versions; whether an AI agent using the node as a tool can reach it; the workaround a workflow has today, if any
+  - type: textarea
+    id: cause
+    attributes:
+      label: Suspected cause and fix
+      description: Optional
+  - type: input
+    id: related
+    attributes:
+      label: Related
+      placeholder: "Related to #12"

@@ -1,0 +1,79 @@
+name: Enhancement
+description: Something a workflow cannot do with the node today, or can only do with a Code or HTTP Request node
+title: "<Component> › <Operation>: <what to add>"
+labels: ["enhancement"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Describe the need before the solution. One issue per problem; "out of scope" keeps it one.
+  - type: dropdown
+    id: component
+    attributes:
+      label: Component
+      options:
+        - Business Object
+        - Relationship
+        - Attachment
+        - Service Request
+        - Search
+        - Quick Action
+        - Automation
+        - Polling Trigger
+        - Connector Trigger
+        - Credentials
+        - Transport
+        - Query Builder
+        - Docs
+        - Repo
+    validations:
+      required: true
+  - type: textarea
+    id: problem
+    attributes:
+      label: Problem
+      description: What a workflow cannot do today, and what it carries instead (a Code node, Always Output Data, an HTTP Request node)
+    validations:
+      required: true
+  - type: textarea
+    id: proposal
+    attributes:
+      label: Proposal
+      description: The parameter, option or output shape you would add
+    validations:
+      required: true
+  - type: textarea
+    id: alternatives
+    attributes:
+      label: Alternatives
+      description: What else would work and why it is worse
+  - type: textarea
+    id: acceptance
+    attributes:
+      label: Acceptance criteria
+      description: A checklist, each line testable
+      value: |
+        - [ ]
+        - [ ]
+    validations:
+      required: true
+  - type: textarea
+    id: out-of-scope
+    attributes:
+      label: Out of scope
+  - type: dropdown
+    id: compatibility
+    attributes:
+      label: Compatibility
+      description: A change of behaviour in a saved workflow needs a new light node version (CLAUDE.md); every release needs a CHANGELOG entry (AGENTS.md)
+      options:
+        - No behaviour change for saved workflows (patch release)
+        - Changes behaviour, needs a new node version (minor release)
+        - Not sure
+    validations:
+      required: true
+  - type: input
+    id: related
+    attributes:
+      label: Related
+      placeholder: "Related to #12"
