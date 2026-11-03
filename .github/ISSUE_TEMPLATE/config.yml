@@ -1,0 +1,5 @@
+blank_issues_enabled: false
+contact_links:
+  - name: A question about using the node
+    url: https://www.npmjs.com/package/@synergyconsulting/n8n-nodes-ivanti-neurons-for-itsm
+    about: The README on npm documents every operation. The tracker is for bugs and enhancements only.
