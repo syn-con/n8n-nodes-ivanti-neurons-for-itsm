@@ -192,7 +192,9 @@ export class IvantiNeuronsForItsmConnectorTrigger implements INodeType {
 			// about the other checks.
 			await validateRequestAuth.call(this, headers);
 
-			if (headers['content-type'] !== 'application/json') {
+			// Compare the media type only: "application/json; charset=utf-8" is valid too
+			const mediaType = String(headers['content-type'] ?? '').split(';')[0].trim().toLowerCase();
+			if (mediaType !== 'application/json') {
 				throw new NodeOperationError(this.getNode(), 'Invalid Content-Type, expected application/json');
 			}
 			const workflowId = this.getWorkflow().id;
