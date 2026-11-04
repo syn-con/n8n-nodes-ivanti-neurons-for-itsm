@@ -839,8 +839,9 @@ Report the outcome of an Ivanti automation workflow back to the platform.
 | Parameter | Type | Description |
 |-----------|------|-------------|
 | Transaction ID | string | Automation transaction GUID |
-| Status | dropdown | Completed, Failed, or Aborted |
-| Job Result | string | Result message or error details |
+| Status | dropdown | Pending, In Progress, Completed or Failed. Read per item, so an expression can set a different status for each item |
+| Result | string | Result message or error details |
+| If Already Finished | dropdown | What to do when the transaction is already Completed, Failed or Aborted (for example after a retry, or when another branch reported it first). **Error** (default) fails the item. **Skip** returns the transaction unchanged with `"alreadyFinished": true` and does not update it |
 
 **Automatic Features**:
 - Embeds n8n execution URL for traceability

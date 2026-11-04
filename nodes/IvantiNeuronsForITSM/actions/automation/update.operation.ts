@@ -55,7 +55,32 @@ export const properties: INodeProperties[] = [
 		default: '',
 		placeholder: '',
 	},
+	{
+		displayName: 'If Already Finished',
+		name: 'ifAlreadyFinished',
+		type: 'options',
+		noDataExpression: true,
+		default: 'error',
+		description:
+			'What to do when the transaction is already Completed, Failed or Aborted, for example after a retry or when another branch has reported it',
+		options: [
+			{
+				name: 'Error',
+				value: 'error',
+				description: 'Fail the item',
+			},
+			{
+				name: 'Skip',
+				value: 'skip',
+				description:
+					'Return the transaction unchanged with "alreadyFinished": true and do not update it',
+			},
+		],
+	},
 ]
+
+/** Transaction states after which Ivanti no longer accepts a report. */
+const FINISHED_STATES = ['Completed', 'Failed', 'Aborted'];
 
 const displayOptions = {
 	show: {
@@ -70,8 +95,10 @@ export const description = updateDisplayOptions(displayOptions, properties);
  *
  * Reports the outcome of an Ivanti automation job back to the platform by:
  * 1. Fetching the current transaction record from `IVNT_Automation_Transactionss`.
- * 2. Validating that the transaction is not already in a terminal state
- *    (`Completed`, `Failed`, or `Aborted`).
+ * 2. Checking whether the transaction is already in a terminal state
+ *    (`Completed`, `Failed`, or `Aborted`). Depending on "If Already Finished",
+ *    the item fails (default) or the transaction is returned unchanged with
+ *    `alreadyFinished: true` and no PUT is sent.
  * 3. Issuing a `PUT` with the new `Status`, `JobResult`, and a `ReturnPayload`
  *    containing the n8n execution URL for traceability.
  *
@@ -80,10 +107,10 @@ export const description = updateDisplayOptions(displayOptions, properties);
  */
 export async function execute(this: IExecuteFunctions): Promise<INodeExecutionData[]> {
 	const items = this.getInputData();
-	const status = this.getNodeParameter('status', 0) as string;
 	const returnData: INodeExecutionData[] = [];
 	for (let i = 0; i < items.length; i++) {
 		try {
+			const status = this.getNodeParameter('status', i) as string;
 			const transactionId = this.getNodeParameter('transactionId', i) as string;
 			if (transactionId === '') {
 				throw new NodeOperationError(this.getNode(), 'The "Transaction ID" parameter is required!');
@@ -97,8 +124,21 @@ export async function execute(this: IExecuteFunctions): Promise<INodeExecutionDa
 			if (transactionDetails['@odata.context']) {
 				delete transactionDetails['@odata.context'];
 			}
-			if (transactionDetails['Status'] === 'Completed' || transactionDetails['Status'] === 'Failed' || transactionDetails['Status'] === 'Aborted') {
-				throw new NodeOperationError(this.getNode(), 'The transaction is already completed or failed or aborted!');
+			if (FINISHED_STATES.includes(transactionDetails['Status'] as string)) {
+				const ifAlreadyFinished = this.getNodeParameter('ifAlreadyFinished', i, 'error') as string;
+				if (ifAlreadyFinished === 'skip') {
+					returnData.push(
+						...this.helpers.constructExecutionMetaData(
+							this.helpers.returnJsonArray({ ...transactionDetails, alreadyFinished: true }),
+							{ itemData: { item: i } },
+						),
+					);
+					continue;
+				}
+				throw new NodeOperationError(this.getNode(), 'The transaction is already completed or failed or aborted!', {
+					itemIndex: i,
+					description: `Its status is "${String(transactionDetails['Status'])}". Set "If Already Finished" to "Skip" to return it unchanged instead.`,
+				});
 			}
 			const baseUrl = this.getInstanceBaseUrl();
 			const executionUrl = `${baseUrl}/execution/${this.getExecutionId()}`;
