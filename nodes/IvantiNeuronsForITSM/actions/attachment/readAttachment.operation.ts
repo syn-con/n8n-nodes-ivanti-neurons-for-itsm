@@ -10,6 +10,7 @@ import { NodeApiError, NodeOperationError, updateDisplayOptions } from 'n8n-work
 
 import { ivantiApiRequestBinary } from '../../transports'
 import { getOverrideHeaders } from '../requestOptions';
+import { assertSafeRecordId } from '../../common';
 
 
 /**
@@ -57,11 +58,12 @@ export async function execute(this: IExecuteFunctions): Promise<INodeExecutionDa
 
         try {
 
-            const attachmentId = this.getNodeParameter('attachmentId', i) as string;
+            const attachmentId = String(this.getNodeParameter('attachmentId', i) ?? '').trim();
             if (attachmentId === '') {
                 throw new NodeOperationError(this.getNode(), 'The "Attachment ID" parameter is required!');
             }
-            const response = await ivantiApiRequestBinary.call(this, 'GET', `/rest/Attachment?ID=${attachmentId}`, {}, getOverrideHeaders.call(this, i));
+            assertSafeRecordId.call(this, attachmentId);
+            const response = await ivantiApiRequestBinary.call(this, 'GET', `/rest/Attachment?ID=${encodeURIComponent(attachmentId)}`, {}, getOverrideHeaders.call(this, i));
             if (!response) {
                 throw new NodeOperationError(this.getNode(), 'No response from Ivanti API');
             }

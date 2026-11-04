@@ -5,10 +5,11 @@ import type {
     JsonObject,
 } from 'n8n-workflow';
 
-import { NodeApiError, updateDisplayOptions } from 'n8n-workflow';
+import { NodeApiError, NodeOperationError, updateDisplayOptions } from 'n8n-workflow';
 
 import { ivantiApiRequest } from '../../transports'
 import { getOverrideHeaders } from '../requestOptions';
+import { assertSafeRecordId } from '../../common';
 
 /**
  * UI property definitions for the **Attachment → Delete** operation.
@@ -46,8 +47,12 @@ export async function execute(this: IExecuteFunctions): Promise<INodeExecutionDa
     const returnData: INodeExecutionData[] = [];
     for (let i = 0; i < items.length; i++) {
         try {
-            const attachmentId = this.getNodeParameter('attachmentId', i) as string;
-            await ivantiApiRequest.call(this, 'DELETE', `/rest/Attachment?ID=${attachmentId}`, {}, undefined, getOverrideHeaders.call(this, i));
+            const attachmentId = String(this.getNodeParameter('attachmentId', i) ?? '').trim();
+            if (attachmentId === '') {
+                throw new NodeOperationError(this.getNode(), 'The "Attachment ID" parameter is required!');
+            }
+            assertSafeRecordId.call(this, attachmentId);
+            await ivantiApiRequest.call(this, 'DELETE', `/rest/Attachment?ID=${encodeURIComponent(attachmentId)}`, {}, undefined, getOverrideHeaders.call(this, i));
             const executionData = this.helpers.constructExecutionMetaData(
                 this.helpers.returnJsonArray({
                     Message: 'Attachment deleted successfully',
