@@ -5,6 +5,34 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.6.0] - 2026-11-04
+
+### Added
+- **Polling Trigger** version **1.2** emits only records created or modified since the previous poll (#6). It remembers the `LastModDateTime` and `RecId` of the last record it emitted and reads on from there, in that order; your filter is kept and any Order By is replaced. The first poll after activation only records the starting point and emits nothing. With a Limit, the remaining records follow on the next polls. Testing the node in the editor shows the most recently modified records. Versions 1 and 1.1 still emit every matching record on every poll
+- **Ivanti Neurons for ITSM** node version **1.2**: **Automation → Report Transaction** offers the statuses Ivanti uses, **Queued**, **Completed** (the new default), **Failed** and **Aborted** (#37). Versions 1 and 1.1 keep Pending, In Progress, Completed and Failed
+- **Automation → Report Transaction** has a new **If Already Finished** option (#2). **Error** (the default) fails the item as before; **Skip** returns the transaction unchanged with `"alreadyFinished": true` and does not update it, for retries or a second branch reporting the same transaction
+
+### Changed
+- With Continue On Fail, every operation now carries on with the remaining items after one fails, and each error item is paired to its input item with `{ "error", "httpCode" }`, so `$('Node').item` keeps working (#3). **Business Object → Get Many**, **Search by Keyword**, **Search → Saved Search** and **Full Text Search Across All Objects** previously stopped at the first failure. Errors keep Ivanti's HTTP code and say which item failed
+- **Connector Trigger**: authentication is checked first. A failed authentication answers **401** with no body (with `WWW-Authenticate: Basic` only for Basic auth); the other checks answer 400 with their message (#23). Header authentication now compares the key in constant time
+- **Service Request → Create** and **Create (Simplified)**: the Optional Parameters Subject, Symptom, Employee Location and Local Offset are sent as plain values (#8). They were sent as lists of objects, which Ivanti refused. Local Offset 0 is now sent when added
+- In JSON mode, an OData Query that is empty, `{}`, or resolves to nothing from an expression is refused with "The OData Query is empty", instead of reading the business object unfiltered (#5)
+- Manual mode: Select Fields names, the Order By field and the Order Direction are validated; a direction other than `asc` or `desc` is refused instead of returning no records (#21)
+- **Attachment → Read** and **Delete** (#11), **Business Object → Update** and **Delete** (#10), **Relationship → Unlink** and **Service Request → Get Subscriptions** (#9) check that record and attachment IDs are RecIds and encode them, and check business object and relationship names, before building the URL. Empty IDs are refused
+
+### Fixed
+- **Attachment → Upload** sends the form fields Ivanti documents (`ObjectID`, `ObjectType`, `File`), so the attachment is linked to the record (#43). A refused upload (HTTP 300, for example a file of that name already attached) now shows Ivanti's reason per file
+- **Business Object → Search by Keyword** with Return All failed with "Could not get parameter limit" (#7). It also read Select Fields from the first item only
+- **Polling Trigger**: an unset query parameter no longer falls back to `0`; with Select All Fields off and no fields, activation failed with "selectFieldsCollection.map is not a function" (#24)
+- **Connector Trigger**: a tenant typed with `https://` or a trailing slash works for the transaction lookup (#22), and `Content-Type: application/json; charset=utf-8` is accepted (#32)
+- **Search → Saved Search** and **Relationship → Get Related** return no items for an empty answer, instead of one item without data (#19)
+- **Service Request → Create**: a numeric parameter value from an expression failed with "str.trim is not a function" (#18)
+- **Automation → Report Transaction** reads Status per item (#2)
+- **Business Object → Delete**: the default Business Object `incident` failed the operation's own check; the field now starts empty like in the other operations (#35)
+
+### Removed
+- The unused list search `getServiceReqTemplateParameters`, which could only return an empty list (#38)
+
 ## [1.5.0] - 2026-10-15
 
 ### Added
