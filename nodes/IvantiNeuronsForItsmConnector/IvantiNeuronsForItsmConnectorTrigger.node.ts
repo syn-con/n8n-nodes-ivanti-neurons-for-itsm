@@ -187,6 +187,10 @@ export class IvantiNeuronsForItsmConnectorTrigger implements INodeType {
 
 		try {
 			const headers = this.getHeaderData();
+			// Authenticate first, so an unauthenticated caller learns nothing
+			// about the other checks.
+			await validateRequestAuth.call(this, headers);
+
 			if (headers['content-type'] !== 'application/json') {
 				throw new NodeOperationError(this.getNode(), 'Invalid Content-Type, expected application/json');
 			}
@@ -195,7 +199,6 @@ export class IvantiNeuronsForItsmConnectorTrigger implements INodeType {
 				throw new NodeOperationError(this.getNode(), 'Invalid Workflow ID');
 			}
 
-			await validateRequestAuth.call(this, headers);
 			await validateAutomationTransaction.call(this, headers);
 			validateParameters.call(this, bodyData);
 
@@ -214,12 +217,17 @@ export class IvantiNeuronsForItsmConnectorTrigger implements INodeType {
 				workflowData: [this.helpers.returnJsonArray([bodyData as IDataObject])],
 			};
 		} catch (error) {
+			const authFailed = error instanceof Error ? authFailures.get(error) : undefined;
+			if (authFailed) {
+				// 401 without a body: the reason is not disclosed to the caller.
+				// The challenge header is only meaningful for Basic auth.
+				resp.writeHead(401, authFailed.basicChallenge ? { 'WWW-Authenticate': 'Basic realm="Webhook"' } : {});
+				resp.end();
+				return { noWebhookResponse: true };
+			}
 			if (error instanceof NodeOperationError) {
-
-				resp.writeHead(400, {
-					'WWW-Authenticate': 'Basic realm="Webhook"',
-					'Content-Type': 'application/json'
-				});
+				// The caller is authenticated here, so the reason helps it fix the request.
+				resp.writeHead(400, { 'Content-Type': 'application/json' });
 				resp.end(JSON.stringify({
 					Status: 'Error',
 					Message: error.message,
@@ -302,30 +310,45 @@ async function validateRequestAuth(this: IWebhookFunctions, headers: IDataObject
 		const encodedAuth = encodeBasicAuth(credentials.username as string, credentials.password as string);
 		const provided = String(headers['authorization'] ?? '');
 		if (!safeCompare(provided, `Basic ${encodedAuth}`)) {
-			throw new NodeOperationError(this.getNode(), 'Invalid Authorization');
+			throw authFailure(this.getNode(), 'Invalid Authorization', true);
 		}
 	} else if (credentials.type === 'apiKey') {
 		const provided = String(headers['authorization'] ?? '');
 		if (!safeCompare(provided, `${credentials.webhookApiKey}`)) {
-			throw new NodeOperationError(this.getNode(), 'Invalid Authorization');
+			throw authFailure(this.getNode(), 'Invalid Authorization');
 		}
 	} else if (credentials.type === 'header') {
 		const headerName = ((credentials.header as string) ?? '').trim().toLowerCase();
 		if (headerName === '') {
-			throw new NodeOperationError(this.getNode(), 'Header auth is selected but no Header Name is configured');
+			throw authFailure(this.getNode(), 'Header auth is selected but no Header Name is configured');
 		}
 		// n8n returns header keys already lowercased, so look up with a lowercased name.
 		const headerValue = headers[headerName];
-		if (!headerValue) {
-			throw new NodeOperationError(this.getNode(), 'Invalid Authorization');
-		}
-		if (headerValue !== credentials.webhookApiKey) {
-			throw new NodeOperationError(this.getNode(), 'Invalid Authorization');
+		const expected = String(credentials.webhookApiKey ?? '');
+		if (!headerValue || expected === '' || !safeCompare(String(headerValue), expected)) {
+			throw authFailure(this.getNode(), 'Invalid Authorization');
 		}
 	} else {
-		throw new NodeOperationError(this.getNode(), 'Invalid Authorization Type');
+		throw authFailure(this.getNode(), 'Invalid Authorization Type');
 	}
 	return true;
+}
+
+/**
+ * Failed authentications of inbound webhook calls, mapped to whether the 401
+ * answer carries a Basic challenge. They are answered with HTTP 401 and no
+ * body, unlike the other validation errors (HTTP 400 with a message).
+ */
+const authFailures = new WeakMap<Error, { basicChallenge: boolean }>();
+
+function authFailure(
+	node: ConstructorParameters<typeof NodeOperationError>[0],
+	message: string,
+	basicChallenge = false,
+): NodeOperationError {
+	const error = new NodeOperationError(node, message);
+	authFailures.set(error, { basicChallenge });
+	return error;
 }
 /**
  * Validates an incoming automation transaction from Ivanti before the webhook payload is processed.

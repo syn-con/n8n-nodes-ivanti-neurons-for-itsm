@@ -1304,12 +1304,13 @@ For polling triggers:
 
 ### Webhook Trigger Returns 400
 
-**Problem**: Ivanti automation gets 400 Bad Request
+**Problem**: Ivanti automation gets 400 Bad Request or 401 Unauthorized
 
 **Solutions**:
+- **401 Unauthorized** (no response body) means the authentication failed. The trigger checks authentication first and does not say why it failed. Check the authentication type, the username and password, the API key, or the header name and value in the Connector credential. For Basic auth, the response also carries `WWW-Authenticate: Basic realm="Webhook"`.
+- **400 Bad Request** is only returned after authentication succeeded, and its `Message` says which check failed:
 - Verify `Content-Type: application/json` header is set
 - Check `X-Workflow-Id` matches the n8n workflow ID
-- Validate authentication header format
 - Ensure all required parameters are in request body
 - Check parameter types match configuration
 - Review n8n execution logs for specific validation error
@@ -1584,8 +1585,9 @@ A: Enable "Skip SSL Verification" in credentials. For production, install proper
 A: Common causes:
 - Missing `Content-Type: application/json` header
 - Wrong `X-Workflow-Id` header
-- Invalid authentication
 - Missing required parameters
+
+A failed authentication answers 401 Unauthorized instead, with no response body.
 
 ---
 
