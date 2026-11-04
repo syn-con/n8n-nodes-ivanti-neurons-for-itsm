@@ -3,12 +3,12 @@ import type {
     IExecuteFunctions,
     INodeExecutionData,
     INodeProperties,
-    JsonObject,
 } from 'n8n-workflow';
 
-import { NodeApiError, NodeOperationError, updateDisplayOptions } from 'n8n-workflow';
+import { NodeOperationError, updateDisplayOptions } from 'n8n-workflow';
 
 import { ivantiApiRequestAllItems, ivantiApiRequestAllItemsWithLimit } from '../../transports'
+import { continueOnFailItem, itemError } from '../itemErrors';
 import { getOverrideHeaders } from '../requestOptions';
 import { validateBusinessObject } from '../../common';
 
@@ -130,8 +130,8 @@ export async function execute(this: IExecuteFunctions): Promise<INodeExecutionDa
 
     const items = this.getInputData();
     const returnData: INodeExecutionData[] = [];
-    try {
-        for (let i = 0; i < items.length; i++) {
+    for (let i = 0; i < items.length; i++) {
+        try {
 
             const object = this.getNodeParameter('object', i) as string;
 
@@ -187,13 +187,12 @@ export async function execute(this: IExecuteFunctions): Promise<INodeExecutionDa
                 { itemData: { item: i } },
             );
             returnData.push(...executionData);
-        }
-
-    } catch (error) {
-        if (this.continueOnFail()) {
-            returnData.push({ json: { error: (error as Error).message } });
-        } else {
-            throw new NodeApiError(this.getNode(), error as JsonObject);
+        } catch (error) {
+            if (this.continueOnFail()) {
+                returnData.push(continueOnFailItem(error, i));
+            } else {
+                throw itemError.call(this, error, i);
+            }
         }
     }
     return returnData;

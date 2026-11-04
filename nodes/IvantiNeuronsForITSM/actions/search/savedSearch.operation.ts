@@ -2,13 +2,13 @@ import type {
     IExecuteFunctions,
     INodeExecutionData,
     INodeProperties,
-    JsonObject,
 } from 'n8n-workflow';
 
 import { ivantiApiRequest } from '../../transports'
+import { continueOnFailItem, itemError } from '../itemErrors';
 import { getOverrideHeaders } from '../requestOptions';
 
-import { NodeApiError, NodeOperationError, updateDisplayOptions } from 'n8n-workflow';
+import { NodeOperationError, updateDisplayOptions } from 'n8n-workflow';
 import { assertSafePathSegment, validateBusinessObject, validateSavedSearchName } from '../../common';
 
 
@@ -74,8 +74,8 @@ export async function execute(this: IExecuteFunctions): Promise<INodeExecutionDa
     const items = this.getInputData();
 
 
-    try {
-        for (let i = 0; i < items.length; i++) {
+    for (let i = 0; i < items.length; i++) {
+        try {
 
             const searchObject = this.getNodeParameter('searchObject', i) as string;
             validateBusinessObject.call(this, searchObject)
@@ -101,13 +101,12 @@ export async function execute(this: IExecuteFunctions): Promise<INodeExecutionDa
                 { itemData: { item: i } },
             );
             returnData.push(...executionData);
-        }
-
-    } catch (error) {
-        if (this.continueOnFail()) {
-            returnData.push({ json: { error: (error as Error).message } });
-        } else {
-            throw new NodeApiError(this.getNode(), error as JsonObject);
+        } catch (error) {
+            if (this.continueOnFail()) {
+                returnData.push(continueOnFailItem(error, i));
+            } else {
+                throw itemError.call(this, error, i);
+            }
         }
     }
 

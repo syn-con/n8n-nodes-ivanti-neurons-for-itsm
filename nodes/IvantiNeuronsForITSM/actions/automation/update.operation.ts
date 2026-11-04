@@ -8,6 +8,7 @@ import {
 import { NodeOperationError, updateDisplayOptions } from 'n8n-workflow';
 
 import { ivantiApiRequest } from '../../transports';
+import { continueOnFailItem, itemError } from '../itemErrors';
 import { isValidIvantiGuid } from '../../common';
 
 /**
@@ -121,9 +122,9 @@ export async function execute(this: IExecuteFunctions): Promise<INodeExecutionDa
 			returnData.push(...executionData);
 		} catch (error) {
 			if (this.continueOnFail()) {
-				returnData.push({ json: { error: (error as Error).message } });
+				returnData.push(continueOnFailItem(error, i));
 			} else {
-				throw new NodeOperationError(this.getNode(), error as Error);
+				throw itemError.call(this, error, i);
 			}
 		}
 	}

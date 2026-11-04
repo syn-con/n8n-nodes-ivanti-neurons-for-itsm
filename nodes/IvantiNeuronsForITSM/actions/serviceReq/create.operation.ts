@@ -5,11 +5,11 @@ import {
 	type INodeProperties,
 	type IDataObject,
 	NodeOperationError,
-	type JsonObject,
 } from 'n8n-workflow';
 
-import { NodeApiError, updateDisplayOptions } from 'n8n-workflow';
+import { updateDisplayOptions } from 'n8n-workflow';
 import { ivantiApiRequest, ivantiApiRequestAllItems } from '../../transports';
+import { continueOnFailItem, itemError } from '../itemErrors';
 import { getOverrideHeaders } from '../requestOptions';
 import { flattenSingleValueCollection, parseJsonObjectParameter, serviceReqTemplateRLC } from '../../common';
 const serviceReqParamsUrl = "/odata/businessobject/ServiceReqTemplateParams";
@@ -242,10 +242,10 @@ export async function execute(this: IExecuteFunctions): Promise<INodeExecutionDa
 			returnData.push(...executionData);
 		} catch (error) {
 			if (this.continueOnFail()) {
-				returnData.push({ json: { error: (error as Error).message } });
+				returnData.push(continueOnFailItem(error, i));
 				continue;
 			}
-			throw new NodeApiError(this.getNode(), error as JsonObject);
+			throw itemError.call(this, error, i);
 		}
 	}
 

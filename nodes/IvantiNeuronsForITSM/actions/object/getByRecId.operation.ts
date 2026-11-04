@@ -3,12 +3,12 @@ import type {
     INodeExecutionData,
     INodeProperties,
     IDataObject,
-    JsonObject,
 } from 'n8n-workflow';
 
-import { NodeApiError, NodeOperationError, updateDisplayOptions } from 'n8n-workflow';
+import { NodeOperationError, updateDisplayOptions } from 'n8n-workflow';
 
 import { ivantiApiRequest } from '../../transports'
+import { continueOnFailItem, itemError } from '../itemErrors';
 import { getOverrideHeaders } from '../requestOptions';
 import { assertSafeRecordId, validateBusinessObject } from '../../common';
 
@@ -99,10 +99,10 @@ export async function execute(this: IExecuteFunctions): Promise<INodeExecutionDa
         } catch (error) {
             if (this.continueOnFail()) {
 
-                returnData.push({ json: { error: (error as Error).message } });
+                returnData.push(continueOnFailItem(error, i));
 
             } else {
-                throw new NodeApiError(this.getNode(), error as JsonObject);
+                throw itemError.call(this, error, i);
             }
         }
     }

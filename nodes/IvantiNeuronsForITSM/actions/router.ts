@@ -1,5 +1,5 @@
 import type { IExecuteFunctions, INodeExecutionData } from 'n8n-workflow';
-import { NodeOperationError } from 'n8n-workflow';
+import { NodeApiError, NodeOperationError } from 'n8n-workflow';
 
 import type { Ivanti } from './node.type';
 
@@ -66,6 +66,11 @@ export async function router(this: IExecuteFunctions) {
 
 
 	} catch (error) {
+		// Errors from the operations are already n8n errors carrying the HTTP
+		// code, description and item index; wrapping them again would drop that.
+		if (error instanceof NodeApiError || error instanceof NodeOperationError) {
+			throw error;
+		}
 		// NodeOperationError cannot wrap a thrown value that is not an Error or a
 		// string (it crashes with "Cannot use 'in' operator ..."), so convert
 		// anything else to text first.
