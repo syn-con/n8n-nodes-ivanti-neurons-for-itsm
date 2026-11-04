@@ -344,17 +344,22 @@ async function fetchParameterTypes(
  * @returns Coerced string value ready for the API payload
  */
 function coerceParameterValue(value: unknown, fieldType: string): string {
-	let str: string;
+	// A missing value is passed on as is, so the parameter is left out of the
+	// request body as before.
+	if (value === undefined || value === null) return value as unknown as string;
 
-	if (typeof value === 'boolean') {
-		str = String(value);
-	} else if (typeof value === 'object' && value !== null) {
-		str = String(value);
+	let str: string;
+	if (value instanceof Date) {
+		// A Date from an expression: send ISO 8601, which the date rules below expect
+		str = isNaN(value.getTime()) ? '' : value.toISOString();
+	} else if (typeof value === 'object') {
+		str = JSON.stringify(value);
 	} else {
-		str = value as string;
+		// Numbers, booleans and strings (e.g. {{ 3 }} becomes "3")
+		str = String(value);
 	}
 
-	if (!str?.trim()) return str;
+	if (!str.trim()) return str;
 
 	if (fieldType.includes('datetime')) {
 		str = str.replace(/\.\d{3}/, '');
