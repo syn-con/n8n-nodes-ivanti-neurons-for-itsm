@@ -107,7 +107,7 @@ function parseJsonBody(body: unknown): any {
  * envelope, instead of letting a spread of `undefined` fail with an opaque
  * "is not iterable" message.
  */
-function extractValueArray(
+export function extractValueArray(
 	this: IExecuteFunctions | IExecuteSingleFunctions | IHookFunctions | ILoadOptionsFunctions | ITriggerFunctions | IPollFunctions,
 	response: SearchResponse,
 ): IDataObject[] {

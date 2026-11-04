@@ -8,7 +8,7 @@ import {
 
 import { NodeOperationError, updateDisplayOptions } from 'n8n-workflow';
 
-import { ivantiApiRequest } from '../../transports'
+import { extractValueArray, ivantiApiRequest } from '../../transports'
 import { continueOnFailItem, itemError } from '../itemErrors';
 import { getOverrideHeaders } from '../requestOptions';
 import { assertSafeFieldName, assertSafePathSegment, assertSafeRecordId, validateBusinessObject } from '../../common';
@@ -146,28 +146,26 @@ export async function execute(this: IExecuteFunctions): Promise<INodeExecutionDa
 
 			}
 			const response = await ivantiApiRequest.call(this, 'GET', url, qs, undefined, getOverrideHeaders.call(this, i));
-			let responseData: GetRelatedResponse;
-			if (typeof response.value === 'string' && response.value.includes('No instances found.')) {
-				responseData = {
-					"@odata.context": "",
-					value: [],
-				};
-			} else {
-				responseData = response as GetRelatedResponse;
-			}
+			// Ivanti answers "no related records" either with the text
+			// "No instances found." in `value` or with an empty body (HTTP 204).
+			const related =
+				response && typeof response.value === 'string' && response.value.includes('No instances found.')
+					? []
+					: extractValueArray.call(this, response);
 			let executionData: INodeExecutionData[] = [];
 			if (includeInputFields) {
 				executionData.push(
 					{
 						json: {
 							...items[i].json,
-							[`${relationship}`]: responseData.value,
-						}
+							[`${relationship}`]: related,
+						},
+						pairedItem: { item: i },
 					}
 				)
 			} else {
 				executionData = this.helpers.constructExecutionMetaData(
-					this.helpers.returnJsonArray(responseData.value),
+					this.helpers.returnJsonArray(related),
 					{ itemData: { item: i } },
 				);
 			}

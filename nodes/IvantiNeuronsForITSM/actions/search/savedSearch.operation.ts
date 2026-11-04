@@ -4,7 +4,7 @@ import type {
     INodeProperties,
 } from 'n8n-workflow';
 
-import { ivantiApiRequest } from '../../transports'
+import { extractValueArray, ivantiApiRequest } from '../../transports'
 import { continueOnFailItem, itemError } from '../itemErrors';
 import { getOverrideHeaders } from '../requestOptions';
 
@@ -96,8 +96,10 @@ export async function execute(this: IExecuteFunctions): Promise<INodeExecutionDa
 
 
             const response = await ivantiApiRequest.call(this, 'GET', `/odata/businessobject/${searchObject}/${savedSearchName}`, { ActionId: savedSearchGUID }, {}, getOverrideHeaders.call(this, i));
+            // An empty answer (HTTP 204, no match) becomes an empty list, not one empty item
+            const records = extractValueArray.call(this, response);
             const executionData = this.helpers.constructExecutionMetaData(
-                this.helpers.returnJsonArray(response.value),
+                this.helpers.returnJsonArray(records),
                 { itemData: { item: i } },
             );
             returnData.push(...executionData);
