@@ -267,9 +267,61 @@ export async function ivantiApiRequestFormData(
 		body: formData,
 		json: false,
 		skipSslCertificateValidation: credential.skipSslVerification as boolean,
+		returnFullResponse: true,
+		ignoreHttpStatusErrors: true,
 	};
 	applyHeaders(options, headers);
-	return sendRequest.call(this, options);
+
+	const response = await sendRequest.call(this, options);
+	if (response.statusCode < 200 || response.statusCode >= 300) {
+		// Keep Ivanti's reply body so the user sees why the upload was refused,
+		// instead of a bare "Request failed with status code ..." from axios.
+		const failures = extractUploadFailures(parseJsonBody(response.body));
+		throw new NodeApiError(this.getNode(), response as JsonObject, {
+			message:
+				failures.length > 0
+					? `Ivanti API request failed (HTTP ${response.statusCode}): ${failures.join('; ')}`
+					: buildIvantiErrorMessage(response.statusCode, response.body),
+			description: describeBody(response.body),
+			httpCode: String(response.statusCode),
+		});
+	}
+	return parseJsonBody(response.body);
+}
+
+/**
+ * Pulls readable failure reasons out of an attachment upload reply. Ivanti
+ * answers a rejected upload with HTTP 300 (ISM_3000 "Validation Error") and a
+ * `Message` that is either a list of strings or a list of per-file results
+ * (`{ FileName, IsUploaded, Message }`). The per-file list may also be the
+ * whole body.
+ */
+function extractUploadFailures(body: unknown): string[] {
+	const list = Array.isArray(body)
+		? body
+		: body && typeof body === 'object' && Array.isArray((body as IDataObject).Message)
+			? ((body as IDataObject).Message as unknown[])
+			: [];
+	const reasons: string[] = [];
+	for (const entry of list) {
+		if (typeof entry === 'string') {
+			reasons.push(entry);
+		} else if (entry && typeof entry === 'object') {
+			const file = entry as IDataObject;
+			if (file.IsUploaded === false) {
+				const name = typeof file.FileName === 'string' ? `${file.FileName}: ` : '';
+				reasons.push(`${name}${typeof file.Message === 'string' ? file.Message : 'Upload failed'}`);
+			}
+		}
+	}
+	return reasons;
+}
+
+/** Renders a reply body as text for an error description (truncated). */
+function describeBody(body: unknown): string {
+	if (body === undefined || body === null || body === '') return 'Ivanti returned an empty body';
+	const text = typeof body === 'string' ? body : JSON.stringify(body);
+	return `Ivanti replied: ${text.slice(0, 2000)}`;
 }
 
 /**

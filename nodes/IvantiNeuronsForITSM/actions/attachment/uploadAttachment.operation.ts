@@ -87,7 +87,7 @@ export async function execute(this: IExecuteFunctions): Promise<INodeExecutionDa
         try {
 
 
-            const objectType = this.getNodeParameter('objectType', 0) as string;
+            const objectType = this.getNodeParameter('objectType', i) as string;
 
             validateBusinessObject.call(this, objectType);
 
@@ -105,11 +105,12 @@ export async function execute(this: IExecuteFunctions): Promise<INodeExecutionDa
             const fileBuffer = await this.helpers.getBinaryDataBuffer(i, binaryPropertyName);
 
             const formData = new FormData();
-            formData.append('businessObjectId', businessObjectId);
-            formData.append('objectType', toActualObjectType(objectType));
+            // Field names as documented for POST /api/rest/Attachment
+            formData.append('ObjectID', businessObjectId);
+            formData.append('ObjectType', toActualObjectType(objectType));
 
             const blob = new Blob([fileBuffer], { type: binaryData.mimeType });
-            formData.append('file', blob, binaryData.fileName ?? 'upload');
+            formData.append('File', blob, binaryData.fileName ?? 'upload');
 
             const response = await ivantiApiRequestFormData.call(this, 'POST', '/rest/Attachment', formData, getOverrideHeaders.call(this, i));
             const executionData = this.helpers.constructExecutionMetaData(
