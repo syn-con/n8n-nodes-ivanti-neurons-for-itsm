@@ -31,7 +31,7 @@ Ivanti Neurons for ITSM is an enterprise IT service management platform for mana
 ## Features
 
 - **Full OData Support**: Complete CRUD operations on any Ivanti business object
-- **Smart Polling**: Intelligent trigger node with deduplication and filtering
+- **Smart Polling**: Trigger node with filtering; from trigger version 1.2 it emits only new or changed records
 - **Webhook Integration**: Seamless integration with Ivanti automation runbooks
 - **Attachment Management**: Upload, download, and delete file attachments
 - **Relationship Traversal**: Navigate complex object relationships
@@ -140,9 +140,13 @@ This package includes **four nodes** for comprehensive Ivanti integration:
 
 **How It Works**:
 1. Polls the Ivanti OData API at configurable intervals
-2. Compares results against previous poll using `RecId`
-3. Emits only new/changed records
-4. Stores state in workflow static data for deduplication
+2. **Version 1.2 and later**: emits only records created or modified since the previous poll
+   - The trigger remembers the `LastModDateTime` and `RecId` of the last record it emitted (in the workflow static data) and reads on from there, in order of `LastModDateTime`, then `RecId`. Your filter is kept; any Order By is replaced by this order.
+   - The first poll after the workflow is activated only records the starting point (the most recently modified matching record) and emits nothing.
+   - With a Limit, records beyond the limit are emitted on the next polls, so none are skipped.
+   - A changed record is emitted again each time it is modified.
+   - Testing the node in the editor shows the most recently modified records and does not move the starting point.
+3. **Versions 1 and 1.1**: emit every matching record on every poll. Nothing is remembered between polls, so narrow the filter (for example on `LastModDateTime`) or remove duplicates downstream. Open the node and update it to the latest version to get the behaviour above.
 
 ### 3. Ivanti Neurons for ITSM Connector (Action Node)
 
@@ -1288,6 +1292,7 @@ For polling triggers:
 - Check OData filter syntax is correct
 - Verify records match filter criteria
 - Ensure `RecId` field is included in select
+- Version 1.2: the first poll after activation emits nothing by design; only records modified after it are emitted
 - Review workflow execution history for errors
 - Test filter manually in Ivanti OData URL:
   ```
@@ -1539,11 +1544,11 @@ A: Depends on your SLA requirements. Common intervals:
 
 **Q: Does polling create duplicate executions?**
 
-A: No, the trigger tracks seen `RecId` values to prevent duplicates.
+A: From trigger version 1.2, no: each poll emits only records created or modified since the previous poll (a record is emitted again when it changes). Versions 1 and 1.1 emit every matching record on every poll.
 
 **Q: Can I reset polling state?**
 
-A: Yes, deactivate and reactivate the workflow. Or manually edit workflow static data in n8n database.
+A: Version 1.2 stores its starting point in the workflow static data, under the trigger node's name. To start again from now, delete the trigger node and add it again (or give it a new name), then save the workflow. Deactivating and reactivating the workflow does not reset it.
 
 ---
 

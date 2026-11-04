@@ -10,6 +10,7 @@ import { NodeConnectionTypes, NodeOperationError } from 'n8n-workflow';
 import { ivantiApiRequestAllItems, ivantiApiRequestAllItemsWithLimit } from './transports';
 import { odataListProperties } from './odata/queryProperties';
 import { buildODataQuery } from './odata/queryBuilder';
+import { pollChangedRecords } from './odata/changeTracking';
 import { validateBusinessObject } from './common';
 
 
@@ -17,24 +18,20 @@ import { validateBusinessObject } from './common';
  * Polling trigger node for Ivanti Neurons for ITSM.
  *
  * ## How it works
- * 1. On activation, the node starts an interval timer (configurable in minutes).
- * 2. On every tick it queries the Ivanti OData API for records of the selected
- *    business object that match the configured OData filter.
- * 3. It compares the `RecId` of every returned record against the set of IDs
- *    seen in the previous poll (stored in workflow static data).
- * 4. Only **new** records (IDs not seen before) are emitted downstream.
- * 5. The seen-IDs set is updated after each poll so duplicates are suppressed
- *    across executions.
+ * On every poll it queries the Ivanti OData API for records of the selected
+ * business object that match the configured query.
  *
- * On the first run (no stored state) **all** matching records are emitted so
- * the workflow can bootstrap its state. Set the OData filter to a narrow time
- * window if you want to limit the initial data volume.
+ * - **Version 1.2 and later** emit only records created or modified since the
+ *   previous poll. A bookmark (`LastModDateTime` + `RecId` of the last record
+ *   emitted) is kept in the node's workflow static data. The first poll after
+ *   activation only stores the starting point. See `odata/changeTracking.ts`.
+ * - **Versions 1 and 1.1** emit every matching record on every poll; nothing
+ *   is remembered between polls.
  *
  * ## Manual trigger (test mode)
  * When the node is tested manually in the editor it runs a single poll and
- * emits whatever records are currently returned by the API, ignoring the
- * stored state, so you can inspect the data shape without waiting for the
- * interval.
+ * emits the records currently returned by the API (version 1.2: the most
+ * recently modified ones), without reading or changing the bookmark.
  */
 // Trigger nodes cannot be invoked as AI tools, so n8n's community review requires
 // them to omit usableAsTool; this lint rule does not distinguish trigger nodes.
@@ -46,7 +43,7 @@ export class IvantiNeuronsForItsmTrigger implements INodeType {
 		name: 'ivantiNeuronsForItsmTrigger',
 		icon: { light: 'file:../../icons/ivant-neurons-for-itsm.svg', dark: 'file:../../icons/ivant-neurons-for-itsm.dark.svg' },
 		group: ['trigger'],
-		version: [1, 1.1],
+		version: [1, 1.1, 1.2],
 		subtitle: '=Poll: {{$parameter["object"]}} every {{$parameter["pollInterval"]}} min',
 		description: 'Polls Ivanti Neurons for ITSM on a configurable interval and emits new records.',
 		defaults: {
@@ -71,6 +68,14 @@ export class IvantiNeuronsForItsmTrigger implements INodeType {
 				placeholder: 'Incidents',
 				description: "The plural OData entity name to poll, e.g. 'Incidents', 'Changes', 'Problems'",
 			},
+			{
+				displayName:
+					'Each poll emits only the records created or modified since the previous poll, read in order of LastModDateTime and RecId (any Order By is replaced). The first poll after activation only records the starting point and emits nothing. Testing the node in the editor shows the most recently modified records.',
+				name: 'changeTrackingNotice',
+				type: 'notice',
+				default: '',
+				displayOptions: { show: { '@version': [{ _cnd: { gte: 1.2 } }] } },
+			},
 			...odataListProperties
 		],
 	};
@@ -88,9 +93,9 @@ export class IvantiNeuronsForItsmTrigger implements INodeType {
 	 * 4. Returns `null` when no records are found so n8n skips the execution silently.
 	 *    Returns a single output array of JSON items when records are present.
 	 *
-	 * Note: deduplication (seen-RecId tracking) is NOT performed here — this node relies on
-	 * n8n's built-in poll deduplication via `getWorkflowStaticData` if needed, or the caller
-	 * is expected to filter downstream.
+	 * From version 1.2, steps 3–4 are replaced by `pollChangedRecords`, which emits only
+	 * records created or modified since the previous poll. Versions 1 and 1.1 do not
+	 * deduplicate.
 	 */
 	async poll(this: IPollFunctions): Promise<INodeExecutionData[][] | null> {
 		const object = this.getNodeParameter('object') as string;
@@ -105,6 +110,13 @@ export class IvantiNeuronsForItsmTrigger implements INodeType {
 
 
 		const query = buildODataQuery.call(this, 0, { includeRecId: true });
+
+		// Version 1.2 emits only new or changed records; 1 and 1.1 keep emitting
+		// every matching record on each poll.
+		if (this.getNode().typeVersion >= 1.2) {
+			return pollChangedRecords.call(this, `/odata/businessobject/${object}`, query);
+		}
+
 		let response: IDataObject | IDataObject[] | null = null;
 		try {
 			const returnAll = this.getNodeParameter('returnAll', false) as boolean;
