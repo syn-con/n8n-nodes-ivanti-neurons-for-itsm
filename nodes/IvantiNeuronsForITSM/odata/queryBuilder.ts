@@ -1,6 +1,6 @@
 import type { IDataObject, IExecuteFunctions, IPollFunctions } from 'n8n-workflow';
 import { jsonParse, NodeOperationError } from 'n8n-workflow';
-import { assertSafeFieldName, escapeODataString, parseBoolean, parseJsonObjectParameter } from '../common';
+import { assertSafeFieldName, escapeODataString, parseBoolean, parseJsonObjectParameter, readSelectFieldNames } from '../common';
 
 
 /** Context shared by execute (action) and poll (trigger) callers. */
@@ -271,11 +271,10 @@ export function buildODataQuery(
 
     const selectAllFields = readParam.call(this, 'selectAllFields', itemIndex, true) as boolean;
     if (!selectAllFields) {
-        const selectFieldsValue = readParam.call(this, 'selectFields.fields', itemIndex, []);
-        const selectFieldsCollection = (Array.isArray(selectFieldsValue) ? selectFieldsValue : []) as Array<{ name: string }>;
-        const fieldNames = selectFieldsCollection
-            .map((f) => f.name)
-            .filter((name) => name !== '' && name !== undefined && name !== null);
+        const fieldNames = readSelectFieldNames.call(
+            this,
+            readParam.call(this, 'selectFields.fields', itemIndex, []),
+        );
         if (options.includeRecId && !fieldNames.includes('RecId')) {
             fieldNames.unshift('RecId');
         }
@@ -306,9 +305,19 @@ export function buildODataQuery(
         query['$filter'] = filterStrings.join('');
     }
 
-    const orderBy = readParam.call(this, 'orderBy', itemIndex, '') as string;
-    const orderDirection = readParam.call(this, 'orderDirection', itemIndex, 'asc') as string;
+    const orderBy = String(readParam.call(this, 'orderBy', itemIndex, '') ?? '').trim();
     if (orderBy) {
+        assertSafeFieldName.call(this, orderBy);
+        // Ivanti answers an unknown direction (e.g. "ascending") with 204 No
+        // Content, which would look like "no records", so refuse it here.
+        const orderDirection = String(readParam.call(this, 'orderDirection', itemIndex, 'asc') ?? '')
+            .trim()
+            .toLowerCase();
+        if (orderDirection !== 'asc' && orderDirection !== 'desc') {
+            throw new NodeOperationError(this.getNode(), `Invalid order direction: "${orderDirection}"`, {
+                description: 'Use "asc" or "desc"',
+            });
+        }
         query['$orderby'] = `${orderBy} ${orderDirection}`;
     }
 

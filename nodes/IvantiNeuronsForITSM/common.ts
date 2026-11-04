@@ -68,6 +68,26 @@ export function assertSafeFieldName(this: IExecuteFunctions | IPollFunctions, na
 }
 
 /**
+ * Reads the field names from a "Select Fields" collection value: trims each
+ * name, skips empty rows and checks every name with `assertSafeFieldName`, so a
+ * value from an expression cannot add anything else to `$select`.
+ *
+ * @param rows - The `selectFields.fields` value; anything that is not a list counts as empty
+ * @returns The validated field names, in order
+ */
+export function readSelectFieldNames(this: IExecuteFunctions | IPollFunctions, rows: unknown): string[] {
+	if (!Array.isArray(rows)) return [];
+	const names: string[] = [];
+	for (const row of rows as Array<{ name?: unknown }>) {
+		const name = row?.name === undefined || row.name === null ? '' : String(row.name).trim();
+		if (name === '') continue;
+		assertSafeFieldName.call(this, name);
+		names.push(name);
+	}
+	return names;
+}
+
+/**
  * Escapes a string value for safe inclusion in an OData string literal.
  * Per the OData spec, a single quote inside a string literal must be doubled.
  * Returns the value already wrapped in single quotes, ready to drop into a

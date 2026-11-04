@@ -10,7 +10,7 @@ import { NodeOperationError, updateDisplayOptions } from 'n8n-workflow';
 import { ivantiApiRequestAllItems, ivantiApiRequestAllItemsWithLimit } from '../../transports'
 import { continueOnFailItem, itemError } from '../itemErrors';
 import { getOverrideHeaders } from '../requestOptions';
-import { validateBusinessObject } from '../../common';
+import { readSelectFieldNames, validateBusinessObject } from '../../common';
 
 /**
  * UI property definitions for the **Business Object → Search By Keyword** operation.
@@ -142,10 +142,7 @@ export async function execute(this: IExecuteFunctions): Promise<INodeExecutionDa
             const baseUrl = `/odata/businessobject/${object}`;
             let select = '';
             if (!selectAllFields) {
-                const selectFieldsCollection = this.getNodeParameter('selectFields.fields', 0, []) as { name: string }[];
-                if (selectFieldsCollection.length !== 0) {
-                    select += selectFieldsCollection.map(field => field.name).join(',');
-                }
+                select = readSelectFieldNames.call(this, this.getNodeParameter('selectFields.fields', i, [])).join(',');
             }
             const searchText = this.getNodeParameter('searchText', i) as string;
 
