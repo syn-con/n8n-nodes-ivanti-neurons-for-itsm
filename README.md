@@ -359,7 +359,7 @@ $filter=Status eq 'Active' and contains(Subject,'printer')&$select=RecId,Subject
 
 Because nothing is checked or escaped in JSON mode, quote text values yourself (`'Active'`) and double any single quote inside them (`'O''Brien'`).
 
-**Node versions**: workflows created before version 1.1 keep version 1, with the "Define Filter as JSON" toggle and no Mode field. New nodes are added as version 1.1.
+**Node versions**: workflows created before version 1.1 keep version 1, with the "Define Filter as JSON" toggle and no Mode field. New nodes are added as the latest version (1.2), which also changes the Automation › Report Transaction Status options.
 
 The same options are available on the **Ivanti Neurons for ITSM Polling Trigger**.
 
@@ -839,7 +839,7 @@ Report the outcome of an Ivanti automation workflow back to the platform.
 | Parameter | Type | Description |
 |-----------|------|-------------|
 | Transaction ID | string | Automation transaction GUID |
-| Status | dropdown | Pending, In Progress, Completed or Failed. Read per item, so an expression can set a different status for each item |
+| Status | dropdown | Node version 1.2+: Queued, Completed (default), Failed or Aborted, the values Ivanti uses for automation transactions. Versions 1 and 1.1: Pending (default), In Progress, Completed or Failed. Read per item, so an expression can set a different status for each item |
 | Result | string | Result message or error details |
 | If Already Finished | dropdown | What to do when the transaction is already Completed, Failed or Aborted (for example after a retry, or when another branch reported it first). **Error** (default) fails the item. **Skip** returns the transaction unchanged with `"alreadyFinished": true` and does not update it |
 

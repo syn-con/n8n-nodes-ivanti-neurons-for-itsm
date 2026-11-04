@@ -16,7 +16,8 @@ import { isValidIvantiGuid } from '../../common';
  *
  * Exposes:
  * - `transactionId` – 32-character GUID of the automation transaction to update
- * - `status` – new status (`Pending`, `In Progress`, `Completed`, `Failed`)
+ * - `status` – new status: `Queued`, `Completed`, `Failed` or `Aborted` from node
+ *   version 1.2; `Pending`, `In Progress`, `Completed` or `Failed` before that
  * - `result` – optional result payload string
  */
 export const properties: INodeProperties[] = [
@@ -31,7 +32,7 @@ export const properties: INodeProperties[] = [
 		default: '',
 		placeholder: '',
 	},
-	//Status
+	//Status (node versions 1 and 1.1: kept unchanged for saved workflows)
 	{
 		displayName: 'Status',
 		name: 'status',
@@ -46,6 +47,24 @@ export const properties: INodeProperties[] = [
 			{ name: 'Completed', value: 'Completed' },
 			{ name: 'Failed', value: 'Failed' },
 		],
+		displayOptions: { show: { '@version': [{ _cnd: { lt: 1.2 } }] } },
+	},
+	//Status (node version 1.2 and later: the values Ivanti uses for automation transactions)
+	{
+		displayName: 'Status',
+		name: 'status',
+		type: 'options',
+		required: true,
+		description: 'The status of the transaction',
+		default: 'Completed',
+		placeholder: '',
+		options: [
+			{ name: 'Aborted', value: 'Aborted' },
+			{ name: 'Completed', value: 'Completed' },
+			{ name: 'Failed', value: 'Failed' },
+			{ name: 'Queued', value: 'Queued' },
+		],
+		displayOptions: { show: { '@version': [{ _cnd: { gte: 1.2 } }] } },
 	},
 	{
 		displayName: 'Result',
