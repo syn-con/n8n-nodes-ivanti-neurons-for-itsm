@@ -147,11 +147,6 @@ export async function execute(this: IExecuteFunctions): Promise<INodeExecutionDa
                     select += selectFieldsCollection.map(field => field.name).join(',');
                 }
             }
-            const limit = this.getNodeParameter('limit', i) as number;
-
-            if (limit < 0) {
-                throw new NodeOperationError(this.getNode(), 'The limit must be a non-negative number');
-            }
             const searchText = this.getNodeParameter('searchText', i) as string;
 
             if (!searchText) {
@@ -172,6 +167,11 @@ export async function execute(this: IExecuteFunctions): Promise<INodeExecutionDa
                 );
                 records.push(...allRecords);
             } else {
+                // Limit is only shown (and only stored) when Return All is off
+                const limit = this.getNodeParameter('limit', i, 50) as number;
+                if (limit < 0) {
+                    throw new NodeOperationError(this.getNode(), 'The limit must be a non-negative number');
+                }
                 const allRecords = await ivantiApiRequestAllItemsWithLimit.call(
                     this, 'GET', baseUrl,
                     { "$select": select || undefined, "$search": searchText },
