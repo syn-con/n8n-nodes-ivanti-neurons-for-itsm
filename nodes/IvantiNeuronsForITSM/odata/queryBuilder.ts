@@ -191,6 +191,12 @@ export function parseNativeODataQuery(
     raw: unknown,
     itemIndex: number,
 ): IDataObject {
+    // An expression on a missing property resolves to undefined, null or ''.
+    // parseJsonObjectParameter treats that as "no options", which here would
+    // silently read the business object unfiltered, so refuse it instead.
+    if (raw === undefined || raw === null || (typeof raw === 'string' && raw.trim() === '')) {
+        throw emptyQueryError.call(this, itemIndex);
+    }
     const parsed = parseJsonObjectParameter.call(this, raw, 'The "OData Query (JSON)" field', itemIndex);
 
     const query: IDataObject = {};
@@ -212,7 +218,18 @@ export function parseNativeODataQuery(
         }
         query[key] = value;
     }
+    if (Object.keys(query).length === 0) {
+        throw emptyQueryError.call(this, itemIndex);
+    }
     return query;
+}
+
+function emptyQueryError(this: QueryCtx, itemIndex: number): NodeOperationError {
+    return new NodeOperationError(this.getNode(), 'The OData Query is empty', {
+        itemIndex,
+        description:
+            'Enter at least one query option, for example {"$filter": "Status eq \'Active\'"}. If the query comes from an expression, check that it resolves to a value for this item. To read records without a filter, switch Mode to Manual.',
+    });
 }
 
 /**
