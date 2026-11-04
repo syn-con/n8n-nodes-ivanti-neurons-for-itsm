@@ -11,6 +11,7 @@ import type {
 import { createHash, timingSafeEqual } from 'node:crypto';
 import { NodeApiError, NodeConnectionTypes, NodeOperationError } from 'n8n-workflow';
 import { isValidIvantiGuid } from './common';
+import { buildBaseUrl } from '../IvantiNeuronsForITSM/transports';
 
 
 /**
@@ -375,13 +376,12 @@ async function validateAutomationTransaction(this: IWebhookFunctions, headers: I
 	if (credentials === undefined) {
 		throw new NodeOperationError(this.getNode(), 'No credentials got returned!');
 	}
-	const tenant = credentials.tenant as string;
-	const isOnPrem = credentials.isOnPrem as boolean;
 	const skipSslVerification = credentials.skipSslVerification as boolean;
-	// On-prem deployments expose the API under the /HEAT virtual directory
-	const baseUrl = `https://${tenant}${isOnPrem ? '/HEAT' : ""}/api`;
 	const transactionId = headers['x-transaction-id'];
-	const url = `${baseUrl}/odata/businessobject/IVNT_Automation_Transactionss('${transactionId}')`; const options: IHttpRequestOptions = {
+	// Same URL rules as the action node: the tenant may be typed with a protocol
+	// or a trailing slash, and on-prem deployments use the /HEAT/api path.
+	const url = buildBaseUrl(credentials, `/odata/businessobject/IVNT_Automation_Transactionss('${transactionId}')`);
+	const options: IHttpRequestOptions = {
 		method: 'GET',
 		url: url,
 		json: false,
