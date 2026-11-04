@@ -246,3 +246,29 @@ export function parseJsonObjectParameter(
 	}
 	throw new NodeOperationError(this.getNode(), `${label} must be a JSON object`, { itemIndex });
 }
+
+/**
+ * Flattens a `fixedCollection` with `multipleValues: true` whose options each
+ * hold a single `value` field. n8n stores such a collection as
+ * `{ subject: [{ value: 'Laptop' }], localOffset: [{ value: 0 }] }`; this
+ * returns `{ subject: 'Laptop', localOffset: 0 }`. When an option was added
+ * more than once, the first entry wins. A scalar (e.g. set by an expression)
+ * is kept as is.
+ */
+export function flattenSingleValueCollection(collection: unknown): IDataObject {
+	const result: IDataObject = {};
+	if (!collection || typeof collection !== 'object' || Array.isArray(collection)) {
+		return result;
+	}
+	for (const [name, entry] of Object.entries(collection as IDataObject)) {
+		const first = Array.isArray(entry) ? entry[0] : entry;
+		const value =
+			first && typeof first === 'object' && !Array.isArray(first) && 'value' in first
+				? (first as IDataObject).value
+				: first;
+		if (value !== undefined && value !== null) {
+			result[name] = value as IDataObject[keyof IDataObject];
+		}
+	}
+	return result;
+}

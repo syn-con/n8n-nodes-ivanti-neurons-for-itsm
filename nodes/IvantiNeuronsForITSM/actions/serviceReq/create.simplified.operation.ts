@@ -11,7 +11,7 @@ import {
 import { NodeApiError, updateDisplayOptions } from 'n8n-workflow';
 import { ivantiApiRequest } from '../../transports';
 import { getOverrideHeaders } from '../requestOptions';
-import { serviceReqTemplateRLC, SearchResponse, escapeODataString, parseJsonObjectParameter } from '../../common';
+import { serviceReqTemplateRLC, SearchResponse, escapeODataString, parseJsonObjectParameter, flattenSingleValueCollection } from '../../common';
 const serviceReqParamsUrl = "/rest/ServiceRequest/";
 const subscriptionUrl = "/rest/Template";
 const employeeUrl = "/odata/businessobject/Employees";
@@ -240,8 +240,8 @@ function buildRequestBody(
 		serviceReqData: {
 			ProfileLink_RecID: employeeRecId,
 			ProfileLink_Category: 'Employee',
-			Subject: (optionalParameters.subject as string) || '',
-			Symptom: (optionalParameters.symptom as string) || '',
+			Subject: String(optionalParameters.subject ?? ''),
+			Symptom: String(optionalParameters.symptom ?? ''),
 		},
 		subscriptionId,
 		strUserId: employeeRecId,
@@ -250,8 +250,8 @@ function buildRequestBody(
 	if (optionalParameters.employeeLocation) {
 		body.strCustomerLocation = optionalParameters.employeeLocation;
 	}
-	if (optionalParameters.localOffset) {
-		body.localOffset = optionalParameters.localOffset;
+	if (optionalParameters.localOffset !== undefined && optionalParameters.localOffset !== '') {
+		body.localOffset = Number(optionalParameters.localOffset);
 	}
 
 	return body;
@@ -371,7 +371,7 @@ export async function execute(this: IExecuteFunctions): Promise<INodeExecutionDa
 			const serviceReqTemplateId = this.getNodeParameter('serviceReqTemplateId.value', i) as string;
 			const loginId = this.getNodeParameter('loginId', i) as string;
 			const mode = this.getNodeParameter('mode', i) as string;
-			const optionalParameters = this.getNodeParameter('optionalParameters', i, {}) as IDataObject;
+			const optionalParameters = flattenSingleValueCollection(this.getNodeParameter('optionalParameters', i, {}));
 			const headers = getOverrideHeaders.call(this, i);
 
 			const employeeRecId = await resolveEmployeeRecId.call(this, loginId, employeeRecIdCache, headers);

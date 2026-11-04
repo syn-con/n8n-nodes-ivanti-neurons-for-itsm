@@ -11,7 +11,7 @@ import {
 import { NodeApiError, updateDisplayOptions } from 'n8n-workflow';
 import { ivantiApiRequest, ivantiApiRequestAllItems } from '../../transports';
 import { getOverrideHeaders } from '../requestOptions';
-import { parseJsonObjectParameter, serviceReqTemplateRLC } from '../../common';
+import { flattenSingleValueCollection, parseJsonObjectParameter, serviceReqTemplateRLC } from '../../common';
 const serviceReqParamsUrl = "/odata/businessobject/ServiceReqTemplateParams";
 
 /**
@@ -199,11 +199,9 @@ export async function execute(this: IExecuteFunctions): Promise<INodeExecutionDa
 			const subscriptionId = this.getNodeParameter('subscriptionId', i) as string;
 			const mode = this.getNodeParameter('mode', i) as string;
 
-			const optionalParameters = this.getNodeParameter(
-				'optionalParameters',
-				i,
-				{},
-			) as IDataObject;
+			const optionalParameters = flattenSingleValueCollection(
+				this.getNodeParameter('optionalParameters', i, {}),
+			);
 			const body: IDataObject = {
 				"attachmentsToDelete": [],
 				"attachmentsToUpload": [],
@@ -213,8 +211,8 @@ export async function execute(this: IExecuteFunctions): Promise<INodeExecutionDa
 				"serviceReqData": {
 					"ProfileLink_RecID": employeeId,
 					"ProfileLink_Category": "Employee",
-					"Subject": (optionalParameters.subject as string) || '',
-					"Symptom": (optionalParameters.symptom as string) || ''
+					"Subject": String(optionalParameters.subject ?? ''),
+					"Symptom": String(optionalParameters.symptom ?? '')
 				},
 				"subscriptionId": subscriptionId,
 				"strUserId": employeeId,
@@ -223,8 +221,8 @@ export async function execute(this: IExecuteFunctions): Promise<INodeExecutionDa
 			if (optionalParameters.employeeLocation) {
 				body["strCustomerLocation"] = optionalParameters.employeeLocation;
 			}
-			if (optionalParameters.localOffset) {
-				body["localOffset"] = optionalParameters.localOffset;
+			if (optionalParameters.localOffset !== undefined && optionalParameters.localOffset !== '') {
+				body["localOffset"] = Number(optionalParameters.localOffset);
 			}
 			body["parameters"] = await resolveParameters.call(this, i, mode, serviceReqTemplateId);
 
