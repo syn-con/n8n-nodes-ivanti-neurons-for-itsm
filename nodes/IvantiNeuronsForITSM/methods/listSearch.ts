@@ -35,30 +35,6 @@ export async function getServiceReqTemplates(this: ILoadOptionsFunctions): Promi
 }
 
 
-/**
- * `listSearch` method – populates the parameter list for the currently selected
- * Service Request Template.
- *
- * Reads `serviceReqTemplateId` from the current node parameter context and fetches
- * all `ServiceReqTemplateParams` records whose `ParentLink_RecID` matches.
- *
- * @returns List of `{ name, value }` entries where `value` is the parameter `RecId`.
- */
-export async function getServiceReqTemplateParameters(this: ILoadOptionsFunctions) {
-	const serviceReqTemplateId = this.getCurrentNodeParameter('serviceReqTemplateId') as string;
-	const result: IDataObject[] = await ivantiApiRequestAllItems.call(this, 'GET', serviceReqParamsUrl, {
-		"$filter": `ParentLink_RecID eq '${serviceReqTemplateId}'`,
-		"$select": 'RecId,DisplayName,DisplayType,Name',
-	});
-	return {
-		results: result.map((item) => ({
-			name: item.Name as string,
-			value: item.RecId as string,
-			url: '',
-		})),
-	}
-}
-
 function capitalize(s: string): string {
 	return s ? s[0].toUpperCase() + s.slice(1) : s;
 }

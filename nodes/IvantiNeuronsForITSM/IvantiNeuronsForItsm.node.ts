@@ -18,7 +18,7 @@ import * as serviceReq from './actions/serviceReq';
 import * as quickAction from './actions/quickAction';
 import * as automation from './actions/automation';
 
-import { getServiceReqTemplates, getServiceReqTemplateParameters, getServiceRequestParametersSchema, getServiceRequestParametersSimplifiedSchema } from './methods/listSearch';
+import { getServiceReqTemplates, getServiceRequestParametersSchema, getServiceRequestParametersSimplifiedSchema } from './methods/listSearch';
 
 /**
  * Main action node for Ivanti Neurons for ITSM.
@@ -117,8 +117,6 @@ export class IvantiNeuronsForItsm implements INodeType {
         listSearch: {
             /** Fetches published Service Request Templates for the template Resource Locator. */
             getServiceReqTemplates,
-            /** Fetches parameters belonging to the currently selected Service Request Template. */
-            getServiceReqTemplateParameters,
         },
         resourceMapping: {
             /** Builds the dynamic field schema used by the resourceMapper in the Create Service Request operation. */
