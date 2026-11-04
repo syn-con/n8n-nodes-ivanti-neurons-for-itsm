@@ -10,7 +10,7 @@ import { NodeApiError, NodeOperationError, updateDisplayOptions } from 'n8n-work
 
 import { ivantiApiRequest } from '../../transports'
 import { getOverrideHeaders } from '../requestOptions';
-import { validateBusinessObject } from '../../common';
+import { assertSafePathSegment, assertSafeRecordId, validateBusinessObject } from '../../common';
 
 /**
  * UI property definitions for the **Business Object → Update** operation.
@@ -149,16 +149,16 @@ export async function execute(this: IExecuteFunctions): Promise<INodeExecutionDa
 
 	for (let i = 0; i < items.length; i++) {
 		try {
-			const object = this.getNodeParameter('object', i) as string;
-
-			validateBusinessObject.call(this, object);
+			const object = validateBusinessObject.call(this, this.getNodeParameter('object', i) as string);
+			assertSafePathSegment.call(this, object, 'Business Object');
 			const baseUrl = `/odata/businessobject/${object}`;
 
-			const recordId = this.getNodeParameter('recordId', i) as string;
+			const recordId = String(this.getNodeParameter('recordId', i) ?? '').trim();
 			if (recordId === '') {
 				throw new NodeOperationError(this.getNode(), 'The "Record ID" parameter is required!');
 			}
-			const fullUrl = `${baseUrl}('${recordId}')`;
+			assertSafeRecordId.call(this, recordId);
+			const fullUrl = `${baseUrl}('${encodeURIComponent(recordId)}')`;
 			let body: IDataObject = {};
 			const fields = this.getNodeParameter('fields.fields', i, []) as { name: string, value: string }[];
 			if (this.getNodeParameter('mode', i) === 'manual') {
