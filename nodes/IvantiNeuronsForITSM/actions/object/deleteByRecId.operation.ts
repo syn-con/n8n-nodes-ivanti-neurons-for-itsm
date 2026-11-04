@@ -22,7 +22,7 @@ export const properties: INodeProperties[] = [
     {
         displayName: "Business Object",
         name: "object",
-        default: "incident",
+        default: "",
         type: "string",
         required: true,
         noDataExpression: false,
