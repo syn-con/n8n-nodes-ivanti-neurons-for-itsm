@@ -233,10 +233,22 @@ function emptyQueryError(this: QueryCtx, itemIndex: number): NodeOperationError 
 }
 
 /**
+ * Reads a node parameter in either context. Execute functions take
+ * `(name, itemIndex, fallback)`, but poll functions take `(name, fallback)`:
+ * passing an item index there would make it the fallback.
+ */
+function readParam(this: QueryCtx, name: string, itemIndex: number, fallback: unknown): unknown {
+    if ('getInputData' in this) {
+        return (this as IExecuteFunctions).getNodeParameter(name, itemIndex, fallback);
+    }
+    return (this as IPollFunctions).getNodeParameter(name, fallback);
+}
+
+/**
  * Assembles an OData query object ($select, $filter, $orderby) from the node UI inputs.
  *
- * `getNodeParameter` is read positionally so the same signature works for both
- * `IExecuteFunctions` (which passes an item index) and `IPollFunctions`.
+ * Parameters are read with `readParam`, so the same code works for
+ * `IExecuteFunctions` (per item) and `IPollFunctions` (no items).
  *
  * Every filter field name is validated with `assertSafeFieldName`, so all callers
  * get OData-injection protection for free.
@@ -247,23 +259,20 @@ export function buildODataQuery(
     options: BuildODataQueryOptions = {},
 ): IDataObject {
     const nodeVersion = this.getNode().typeVersion;
-    if (nodeVersion >= 1.1 && this.getNodeParameter('queryMode', itemIndex, 'manual') === 'json') {
+    if (nodeVersion >= 1.1 && readParam.call(this, 'queryMode', itemIndex, 'manual') === 'json') {
         return parseNativeODataQuery.call(
             this,
-            this.getNodeParameter('odataQuery', itemIndex, '{}'),
+            readParam.call(this, 'odataQuery', itemIndex, '{}'),
             itemIndex,
         );
     }
 
     const query: IDataObject = {};
 
-    const selectAllFields = this.getNodeParameter('selectAllFields', itemIndex) as boolean;
+    const selectAllFields = readParam.call(this, 'selectAllFields', itemIndex, true) as boolean;
     if (!selectAllFields) {
-        const selectFieldsCollection = this.getNodeParameter(
-            'selectFields.fields',
-            itemIndex,
-            [],
-        ) as Array<{ name: string }>;
+        const selectFieldsValue = readParam.call(this, 'selectFields.fields', itemIndex, []);
+        const selectFieldsCollection = (Array.isArray(selectFieldsValue) ? selectFieldsValue : []) as Array<{ name: string }>;
         const fieldNames = selectFieldsCollection
             .map((f) => f.name)
             .filter((name) => name !== '' && name !== undefined && name !== null);
@@ -275,10 +284,10 @@ export function buildODataQuery(
 
     // The "Define Filter as JSON" toggle only exists on version 1.
     const useRawFilter =
-        nodeVersion < 1.1 && (this.getNodeParameter('useRawFilter', itemIndex, false) as boolean);
+        nodeVersion < 1.1 && (readParam.call(this, 'useRawFilter', itemIndex, false) as boolean);
     const odataFilterCollection = useRawFilter
-        ? parseRawFilter.call(this, this.getNodeParameter('rawFilter', itemIndex, '[]'))
-        : (this.getNodeParameter('odataFilter.odataFilter', itemIndex, []) as ODataFilterEntry[]);
+        ? parseRawFilter.call(this, readParam.call(this, 'rawFilter', itemIndex, '[]'))
+        : (readParam.call(this, 'odataFilter.odataFilter', itemIndex, []) as ODataFilterEntry[]);
     if (odataFilterCollection.length > 0) {
         const filterStrings = odataFilterCollection.map((filter, index) => {
             assertSafeFieldName.call(this, filter.fieldName);
@@ -297,8 +306,8 @@ export function buildODataQuery(
         query['$filter'] = filterStrings.join('');
     }
 
-    const orderBy = this.getNodeParameter('orderBy', itemIndex, '') as string;
-    const orderDirection = this.getNodeParameter('orderDirection', itemIndex, 'asc') as string;
+    const orderBy = readParam.call(this, 'orderBy', itemIndex, '') as string;
+    const orderDirection = readParam.call(this, 'orderDirection', itemIndex, 'asc') as string;
     if (orderBy) {
         query['$orderby'] = `${orderBy} ${orderDirection}`;
     }
