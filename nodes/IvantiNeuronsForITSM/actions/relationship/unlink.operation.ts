@@ -11,7 +11,7 @@ import { NodeApiError, NodeOperationError, updateDisplayOptions } from 'n8n-work
 
 import { ivantiApiRequest } from '../../transports'
 import { getOverrideHeaders } from '../requestOptions';
-import { validateBusinessObject } from '../../common';
+import { assertSafePathSegment, assertSafeRecordId, validateBusinessObject } from '../../common';
 
 
 /**
@@ -89,15 +89,12 @@ export async function execute(this: IExecuteFunctions): Promise<INodeExecutionDa
 
 	for (let i = 0; i < items.length; i++) {
 		try {
-			const relationship = this.getNodeParameter('relationship', i) as string;
-			const businessObject = this.getNodeParameter('businessObject', i) as string;
+			const relationship = String(this.getNodeParameter('relationship', i) ?? '').trim();
+			const businessObject = validateBusinessObject.call(this, this.getNodeParameter('businessObject', i) as string);
 
-			validateBusinessObject.call(this, businessObject);
+			const recordId = String(this.getNodeParameter('recordId', i) ?? '').trim();
 
-
-			const recordId = this.getNodeParameter('recordId', i) as string;
-
-			const targetRecordId = this.getNodeParameter('targetRecordId', i) as string;
+			const targetRecordId = String(this.getNodeParameter('targetRecordId', i) ?? '').trim();
 
 
 			if (recordId === '') {
@@ -106,8 +103,12 @@ export async function execute(this: IExecuteFunctions): Promise<INodeExecutionDa
 			if (targetRecordId === '') {
 				throw new NodeOperationError(this.getNode(), 'The "Target Record ID" parameter is required!');
 			}
+			assertSafePathSegment.call(this, businessObject, 'Business Object');
+			assertSafePathSegment.call(this, relationship, 'Relationship');
+			assertSafeRecordId.call(this, recordId);
+			assertSafeRecordId.call(this, targetRecordId);
 
-			const url = `/odata/businessobject/${businessObject}('${recordId}')/${relationship}('${targetRecordId}')/$Ref`;
+			const url = `/odata/businessobject/${businessObject}('${encodeURIComponent(recordId)}')/${relationship}('${encodeURIComponent(targetRecordId)}')/$Ref`;
 
 			const response = await ivantiApiRequest.call(this, 'DELETE', url, {}, undefined, getOverrideHeaders.call(this, i));
 

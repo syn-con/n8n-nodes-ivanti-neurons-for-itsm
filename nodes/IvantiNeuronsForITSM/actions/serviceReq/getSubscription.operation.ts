@@ -6,11 +6,13 @@ import  {
 	type INodeProperties,
 	type JsonObject,
 	NodeApiError,
+	NodeOperationError,
 	updateDisplayOptions,
 } from 'n8n-workflow';
 
 import { ivantiApiRequest } from '../../transports'
 import { getOverrideHeaders } from '../requestOptions';
+import { assertSafeRecordId } from '../../common';
 
 
 const baseUrl = "/rest/Template";
@@ -66,9 +68,13 @@ export async function execute(this: IExecuteFunctions): Promise<INodeExecutionDa
 
 	for (let i = 0; i < items.length; i++) {
 		try {
-			const employeeId = this.getNodeParameter('employeeId', i) as string;
+			const employeeId = String(this.getNodeParameter('employeeId', i) ?? '').trim();
+			if (employeeId === '') {
+				throw new NodeOperationError(this.getNode(), 'The "Employee ID" parameter is required!');
+			}
+			assertSafeRecordId.call(this, employeeId);
 			const simplifyResponse = this.getNodeParameter('simplifyResponse', i) as boolean;
-			const fullUrl = `${baseUrl}/${employeeId}/_All_`;
+			const fullUrl = `${baseUrl}/${encodeURIComponent(employeeId)}/_All_`;
 			const response = await ivantiApiRequest.call(this, 'GET', fullUrl, {}, undefined, getOverrideHeaders.call(this, i)) as IDataObject[];
 
 			let responseData = response;
