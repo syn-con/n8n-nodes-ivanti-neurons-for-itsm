@@ -1633,10 +1633,11 @@ Contributions are welcome! To contribute:
 1. Fork the repository
 2. Create a feature branch: `git checkout -b feature/my-feature`
 3. Make your changes
-4. Add tests if applicable
+4. Add or update unit tests in `test/`
 5. Run linter: `npm run lint`
 6. Build: `npm run build`
-7. Submit a pull request
+7. Test: `npm test`
+8. Submit a pull request (CI runs lint, build and the tests on it)
 
 ### Reporting Bugs
 

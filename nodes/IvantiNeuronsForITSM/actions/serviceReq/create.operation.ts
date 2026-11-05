@@ -344,7 +344,7 @@ async function fetchParameterTypes(
  * @param fieldType - Lower-cased Ivanti `DisplayType` string (e.g. `datetime`, `date`)
  * @returns Coerced string value ready for the API payload
  */
-function coerceParameterValue(value: unknown, fieldType: string): string {
+export function coerceParameterValue(value: unknown, fieldType: string): string {
 	// A missing value is passed on as is, so the parameter is left out of the
 	// request body as before.
 	if (value === undefined || value === null) return value as unknown as string;

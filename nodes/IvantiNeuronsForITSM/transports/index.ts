@@ -67,7 +67,7 @@ export async function ivantiApiRequest(
 		// body are preserved in the execution log and UI, while still surfacing a
 		// readable Ivanti-specific message.
 		throw new NodeApiError(this.getNode(), response as JsonObject, {
-			message: buildIvantiErrorMessage(response.statusCode, response.body),
+			message: buildIvantiErrorMessage(response.statusCode, parseJsonBody(response.body)),
 			httpCode: String(response.statusCode),
 		});
 	}
@@ -281,7 +281,7 @@ export async function ivantiApiRequestFormData(
 			message:
 				failures.length > 0
 					? `Ivanti API request failed (HTTP ${response.statusCode}): ${failures.join('; ')}`
-					: buildIvantiErrorMessage(response.statusCode, response.body),
+					: buildIvantiErrorMessage(response.statusCode, parseJsonBody(response.body)),
 			description: describeBody(response.body),
 			httpCode: String(response.statusCode),
 		});

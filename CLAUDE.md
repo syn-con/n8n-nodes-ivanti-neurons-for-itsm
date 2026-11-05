@@ -91,11 +91,12 @@ The package is submitted for n8n verification and is scanned with
   (lint rule).
 
 ## Before finishing a change
-Run all three and fix every error and warning:
+Run all four and fix every error, warning and failing test:
 ```
 npm run lint
 npx tsc --noEmit -p .
 npm run build
+npm test
 ```
 Several files use CRLF line endings. Keep a file's existing line endings when
 editing it.

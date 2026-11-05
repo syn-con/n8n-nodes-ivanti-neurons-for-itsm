@@ -1,0 +1,45 @@
+# Runs lint, type check, build and the unit tests on every pull request and on
+# every push to main, so a broken change shows up before it is tagged.
+# publish.yml runs the same tests again before it publishes.
+
+name: CI
+
+on:
+  pull_request:
+  push:
+    branches:
+      - main
+
+permissions:
+  contents: read
+
+jobs:
+  test:
+    name: Lint, build and test
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          # Same as publish.yml: isolated-vm (installed by npm ci) does not
+          # compile on Node 26 yet.
+          node-version: '24'
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Lint
+        run: npm run lint
+
+      - name: Type check
+        run: npx tsc --noEmit -p .
+
+      - name: Build
+        run: npm run build
+
+      - name: Test
+        run: npm test

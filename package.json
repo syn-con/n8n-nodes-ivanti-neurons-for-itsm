@@ -24,6 +24,7 @@
 		"dev": "n8n-node dev",
 		"lint": "n8n-node lint",
 		"lint:fix": "n8n-node lint --fix",
+		"test": "tsc -p tsconfig.test.json && node --test \".test-build/test/**/*.test.js\"",
 		"release": "n8n-node release",
 		"prepublishOnly": "npm run build"
 	},
