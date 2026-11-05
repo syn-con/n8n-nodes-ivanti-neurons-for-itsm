@@ -2,20 +2,18 @@ import type { INodeProperties } from 'n8n-workflow';
 
 /** Shows a parameter only on node version 1.1 and later. */
 const FROM_V1_1 = { '@version': [{ _cnd: { gte: 1.1 } }] };
-/** Shows a parameter only on node versions 1.1 and 1.2 (the Manual / JSON switch). */
+/** Shows a parameter only on node versions 1.1 and 1.2. */
 const V1_1_TO_V1_2 = { '@version': [{ _cnd: { between: { from: 1.1, to: 1.2 } } }] };
-/** Shows a parameter only on node version 1.3 and later (adds the OData mode). */
+/** Shows a parameter only on node version 1.3 and later. */
 const FROM_V1_3 = { '@version': [{ _cnd: { gte: 1.3 } }] };
 /** Shows a parameter only on node version 1 (kept for existing workflows). */
 const BEFORE_V1_1 = { '@version': [{ _cnd: { lt: 1.1 } }] };
 /**
- * Hides a Manual-mode parameter in the other modes. A `hide` rule is ignored when
- * the parameter it checks has no value, so on version 1 (where `queryMode` does
- * not exist) these parameters stay visible.
+ * Hides a Manual-mode parameter in JSON mode. A `hide` rule is ignored when the
+ * parameter it checks has no value, so on version 1 (where `queryMode` does not
+ * exist) these parameters stay visible.
  */
-const HIDE_IN_JSON_MODE = { queryMode: ['json', 'odata'] };
-/** Shows a parameter in the OData mode of version 1.3. */
-const ODATA_MODE = { ...FROM_V1_3, queryMode: ['odata'] };
+const HIDE_IN_JSON_MODE = { queryMode: ['json'] };
 
 /**
  * Shared OData list properties (Return All / Limit / Mode / Select / Filter / Order By).
@@ -24,9 +22,9 @@ const ODATA_MODE = { ...FROM_V1_3, queryMode: ['odata'] };
  *
  * Version 1.1 adds the Mode switch:
  * - **Manual**: the field-by-field builder (Select Fields, OData Filter, Order By)
- * - **JSON**: a native OData query object sent to Ivanti exactly as written
- * Version 1.3 adds a third mode between them, **OData**: one text field per
- * OData option (Filter, Select, Order By), and calls JSON **Advanced (JSON)**.
+ * - **JSON**: a native OData query object sent to Ivanti as written
+ * Version 1.3 keeps both modes and makes JSON mode stricter about its keys and
+ * more forgiving about their spelling and values (see `parseNativeODataQuery`).
  * Version 1 keeps the "Define Filter as JSON" toggle instead.
  */
 export const odataListProperties: INodeProperties[] = [
@@ -65,66 +63,7 @@ export const odataListProperties: INodeProperties[] = [
                 description: 'Write the OData query yourself; it is sent to Ivanti exactly as written',
             },
         ],
-        displayOptions: { show: V1_1_TO_V1_2 },
-    },
-    {
-        displayName: 'Mode',
-        name: 'queryMode',
-        type: 'options',
-        noDataExpression: true,
-        default: 'manual',
-        options: [
-            {
-                name: 'Manual',
-                value: 'manual',
-                description: 'Build the query field by field',
-            },
-            {
-                name: 'OData',
-                value: 'odata',
-                description: 'Write each OData option (filter, select, order) in its own field',
-            },
-            {
-                name: 'Advanced (JSON)',
-                value: 'json',
-                description: 'Write the whole OData query as one JSON object; it is sent to Ivanti exactly as written',
-            },
-        ],
-        displayOptions: { show: FROM_V1_3 },
-    },
-    {
-        displayName: 'Filter',
-        name: 'odataFilterExpression',
-        type: 'string',
-        default: '',
-        placeholder: "Status eq 'Active' and Priority le 2",
-        description: 'The OData $filter, sent to Ivanti as written. Leave empty to read every record.',
-        displayOptions: { show: ODATA_MODE },
-    },
-    {
-        displayName: 'With Return All and an empty Filter, every record of the business object is read. Add a Filter or turn off Return All.',
-        name: 'returnAllWithoutFilterNotice',
-        type: 'notice',
-        default: '',
-        displayOptions: { show: { ...ODATA_MODE, returnAll: [true], odataFilterExpression: [''] } },
-    },
-    {
-        displayName: 'Select',
-        name: 'odataSelect',
-        type: 'string',
-        default: '',
-        placeholder: 'RecId,Subject,Status',
-        description: 'The OData $select: field names separated by commas. Leave empty for all fields.',
-        displayOptions: { show: ODATA_MODE },
-    },
-    {
-        displayName: 'Order By',
-        name: 'odataOrderBy',
-        type: 'string',
-        default: '',
-        placeholder: 'CreatedDateTime desc',
-        description: 'The OData $orderby: fields with an optional asc or desc, separated by commas',
-        displayOptions: { show: ODATA_MODE },
+        displayOptions: { show: FROM_V1_1 },
     },
     {
         displayName: 'OData Query (JSON)',
@@ -133,8 +72,20 @@ export const odataListProperties: INodeProperties[] = [
         default:
             '{\n  "$filter": "Status eq \'Active\'",\n  "$select": "RecId,Subject,Status",\n  "$orderby": "CreatedDateTime desc"\n}',
         description:
-            'OData query options sent to Ivanti exactly as written, for example "$filter", "$select" and "$orderby". Any OData syntax Ivanti supports can be used in the values. From node version 1.3, only these three keys are accepted. Paging ("$top" and "$skip") is controlled by Return All and Limit.',
-        displayOptions: { show: { ...FROM_V1_1, queryMode: ['json'] } },
+            'OData query options sent to Ivanti exactly as written, for example "$filter", "$select" and "$orderby". Any OData syntax Ivanti supports can be used in the values. Paging ("$top" and "$skip") is controlled by Return All and Limit.',
+        displayOptions: { show: { ...V1_1_TO_V1_2, queryMode: ['json'] } },
+    },
+    {
+        // Same parameter as above, described for version 1.3, which checks the keys
+        displayName: 'OData Query (JSON)',
+        name: 'odataQuery',
+        type: 'json',
+        default:
+            '{\n  "$filter": "Status eq \'Active\'",\n  "$select": "RecId,Subject,Status",\n  "$orderby": "CreatedDateTime desc"\n}',
+        description:
+            'The OData options $filter, $select and $orderby, with or without the $ sign. The values are sent to Ivanti as written. $select and $orderby may also be lists, e.g. ["LastModDateTime asc", "RecId asc"]. Paging ($top, $skip) is set by Return All and Limit.',
+        hint: 'To fill in values from the input, switch the field to Expression and write e.g. "$filter": "RecId eq \'{{ $json.id }}\'", or pass a whole object with {{ $json.query }}',
+        displayOptions: { show: { ...FROM_V1_3, queryMode: ['json'] } },
     },
     {
         displayName: 'Select All Fields',

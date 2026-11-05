@@ -178,43 +178,99 @@ const PAGING_OPTIONS = ['$top', '$skip'];
 /**
  * The query options Ivanti documents for reading a business object, accepted in
  * JSON mode from node version 1.3. Ivanti ignores any other key, so a typo such
- * as `filter` or `$filtr` would read the business object unfiltered.
+ * as `$filtr` would read the business object unfiltered.
  */
 const ODATA_OPTIONS = ['$filter', '$select', '$orderby'];
 
-/**
- * Refuses a JSON-mode key that is not an accepted query option (node version 1.3+).
- * Paging options are refused earlier, with their own message.
- */
-function assertKnownODataOption(this: QueryCtx, key: string, itemIndex: number): void {
-    if (ODATA_OPTIONS.includes(key)) return;
+/** Options whose value may also be a list, sent joined with commas (version 1.3+). */
+const LIST_OPTIONS = ['$select', '$orderby'];
 
-    if (key.toLowerCase() === '$search') {
-        throw new NodeOperationError(this.getNode(), '"$search" cannot be used here', {
+/**
+ * Maps a JSON-mode key to its query option (node version 1.3+). The `$` sign and
+ * the letter case may vary: `filter`, `Filter` and `$Filter` are all `$filter`.
+ *
+ * @throws {NodeOperationError} for a paging option, `$search`, or any other key
+ */
+function toODataOption(this: QueryCtx, key: string, itemIndex: number): string {
+    const option = `$${key.trim().replace(/^\$/, '').toLowerCase()}`;
+    if (ODATA_OPTIONS.includes(option)) return option;
+
+    if (PAGING_OPTIONS.includes(option)) {
+        throw new NodeOperationError(this.getNode(), `"${key}" cannot be set in the OData query`, {
+            itemIndex,
+            description: 'Paging is controlled by Return All and Limit',
+        });
+    }
+    if (option === '$search') {
+        throw new NodeOperationError(this.getNode(), `"${key}" cannot be used here`, {
             itemIndex,
             description: 'Ivanti does not support $search for this read. To search by keyword, use Business Object → Search by Keyword.',
         });
     }
-
-    // `filter`, `$Filter` or `$FILTER` for `$filter`
-    const suggestion = ODATA_OPTIONS.find((option) => option === `$${key.replace(/^\$/, '').toLowerCase()}`);
     throw new NodeOperationError(this.getNode(), `Unknown OData option: ${key}`, {
         itemIndex,
-        description: `${suggestion ? `Did you mean "${suggestion}"? ` : ''}Use ${ODATA_OPTIONS.join(', ')}. Ivanti ignores other keys, which would read every record.`,
+        description: `Use ${ODATA_OPTIONS.join(', ')} (with or without the $ sign). Ivanti ignores other keys, which would read every record.`,
     });
+}
+
+/**
+ * Turns a JSON-mode value into the value sent for its option (node version 1.3+).
+ * A list is accepted for `$select` and `$orderby` and joined with commas; empty
+ * entries are dropped. Returns `undefined` for a value that sets nothing (null or
+ * an empty list).
+ */
+function toODataValue(this: QueryCtx, key: string, option: string, value: unknown, itemIndex: number): unknown {
+    if (value === undefined || value === null) return undefined;
+    if (Array.isArray(value)) {
+        if (!LIST_OPTIONS.includes(option)) {
+            throw new NodeOperationError(this.getNode(), `The OData query option "${key}" must be text`, {
+                itemIndex,
+                description: `Only ${LIST_OPTIONS.join(' and ')} accept a list`,
+            });
+        }
+        const entries: string[] = [];
+        for (const entry of value) {
+            if (entry === undefined || entry === null) continue;
+            if (typeof entry === 'object') {
+                throw new NodeOperationError(
+                    this.getNode(),
+                    `The list in the OData query option "${key}" must contain text only`,
+                    { itemIndex },
+                );
+            }
+            const text = String(entry).trim();
+            if (text !== '') entries.push(text);
+        }
+        return entries.length > 0 ? entries.join(',') : undefined;
+    }
+    if (typeof value === 'object') {
+        throw new NodeOperationError(
+            this.getNode(),
+            `The OData query option "${key}" must be text, a number or true/false`,
+            { itemIndex },
+        );
+    }
+    return value;
 }
 
 /**
  * Reads the "OData Query (JSON)" parameter (JSON mode, node version 1.1+).
  *
- * The query is passed to Ivanti exactly as written: no field validation, value
- * quoting or other transformation. Only the shape is checked: it must be a JSON
- * object of plain values, and must not set `$top` / `$skip`, which Return All
- * and Limit use for paging. From node version 1.3, each key must also be one of
- * `ODATA_OPTIONS`.
+ * The values are passed to Ivanti as written: no field validation, value quoting
+ * or other transformation. The query must be a JSON object (text, or an object
+ * from an expression) and must not set `$top` / `$skip`, which Return All and
+ * Limit use for paging.
  *
- * @throws {NodeOperationError} when the JSON is invalid, a value is not a plain
- *   value, a paging option is set, or (version 1.3+) a key is not an OData option
+ * - **Versions 1.1 and 1.2** pass every other key as is, so saved workflows run
+ *   as before.
+ * - **Version 1.3** accepts only `$filter`, `$select` and `$orderby`, with or
+ *   without the `$` sign and in any letter case, refuses any other key (Ivanti
+ *   would ignore it and read every record), and accepts a list for `$select` and
+ *   `$orderby`.
+ *
+ * @throws {NodeOperationError} when the JSON is invalid or empty, a value is not
+ *   a plain value, a paging option is set, or (version 1.3+) a key is not an
+ *   OData option or is given twice
  */
 export function parseNativeODataQuery(
     this: QueryCtx,
@@ -228,9 +284,18 @@ export function parseNativeODataQuery(
         throw emptyQueryError.call(this, itemIndex);
     }
     const parsed = parseJsonObjectParameter.call(this, raw, 'The "OData Query (JSON)" field', itemIndex);
-    // Versions 1.1 and 1.2 keep passing any key, so existing workflows run as before.
-    const knownOptionsOnly = this.getNode().typeVersion >= 1.3;
+    const query =
+        this.getNode().typeVersion >= 1.3
+            ? readKnownOptions.call(this, parsed, itemIndex)
+            : readAnyOptions.call(this, parsed, itemIndex);
+    if (Object.keys(query).length === 0) {
+        throw emptyQueryError.call(this, itemIndex);
+    }
+    return query;
+}
 
+/** JSON mode of versions 1.1 and 1.2: every key except the paging options, as written. */
+function readAnyOptions(this: QueryCtx, parsed: IDataObject, itemIndex: number): IDataObject {
     const query: IDataObject = {};
     for (const [key, value] of Object.entries(parsed)) {
         if (PAGING_OPTIONS.includes(key.toLowerCase())) {
@@ -240,7 +305,6 @@ export function parseNativeODataQuery(
                 { itemIndex, description: 'Paging is controlled by Return All and Limit' },
             );
         }
-        if (knownOptionsOnly) assertKnownODataOption.call(this, key, itemIndex);
         if (value === undefined || value === null) continue;
         if (typeof value === 'object') {
             throw new NodeOperationError(
@@ -251,8 +315,24 @@ export function parseNativeODataQuery(
         }
         query[key] = value;
     }
-    if (Object.keys(query).length === 0) {
-        throw emptyQueryError.call(this, itemIndex);
+    return query;
+}
+
+/** JSON mode of version 1.3: `$filter`, `$select` and `$orderby` only, spelled freely. */
+function readKnownOptions(this: QueryCtx, parsed: IDataObject, itemIndex: number): IDataObject {
+    const query: IDataObject = {};
+    const keyOf: Record<string, string> = {};
+    for (const [key, value] of Object.entries(parsed)) {
+        const option = toODataOption.call(this, key, itemIndex);
+        if (option in keyOf) {
+            throw new NodeOperationError(this.getNode(), `"${keyOf[option]}" and "${key}" both set ${option}`, {
+                itemIndex,
+                description: 'Keep only one of them',
+            });
+        }
+        keyOf[option] = key;
+        const sent = toODataValue.call(this, key, option, value, itemIndex);
+        if (sent !== undefined) query[option] = sent as IDataObject[keyof IDataObject];
     }
     return query;
 }
@@ -263,32 +343,6 @@ function emptyQueryError(this: QueryCtx, itemIndex: number): NodeOperationError 
         description:
             'Enter at least one query option, for example {"$filter": "Status eq \'Active\'"}. If the query comes from an expression, check that it resolves to a value for this item. To read records without a filter, switch Mode to Manual.',
     });
-}
-
-/**
- * OData mode (node version 1.3): each text field and the query option it fills.
- * There is no Search field: Ivanti does not support `$search` in the queries Get Many
- * and the polling trigger send (Search by Keyword uses it on its own).
- */
-const ODATA_MODE_FIELDS: Array<[parameter: string, option: string]> = [
-    ['odataFilterExpression', '$filter'],
-    ['odataSelect', '$select'],
-    ['odataOrderBy', '$orderby'],
-];
-
-/**
- * Builds the query in OData mode (node version 1.3): each non-empty field becomes
- * its query option, sent as written, like the JSON mode. Empty fields are left
- * out, so a node with only a Filter sends only `$filter`.
- */
-function buildOptionsQuery(this: QueryCtx, itemIndex: number): IDataObject {
-    const query: IDataObject = {};
-    for (const [parameter, option] of ODATA_MODE_FIELDS) {
-        const value = readParam.call(this, parameter, itemIndex, '');
-        const text = value === undefined || value === null ? '' : String(value).trim();
-        if (text !== '') query[option] = text;
-    }
-    return query;
 }
 
 /**
@@ -325,9 +379,6 @@ export function buildODataQuery(
             readParam.call(this, 'odataQuery', itemIndex, '{}'),
             itemIndex,
         );
-    }
-    if (queryMode === 'odata' && nodeVersion >= 1.3) {
-        return buildOptionsQuery.call(this, itemIndex);
     }
 
     const query: IDataObject = {};

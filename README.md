@@ -313,11 +313,8 @@ Retrieve multiple records with powerful filtering and pagination.
 | Business Object | string | Plural entity name (e.g., `Incidents`) |
 | Return All | boolean | If true, fetch all records across all pages |
 | Limit | number | Max records to return (when Return All = false) |
-| Mode | dropdown | *Node version 1.1+.* `Manual` (build the query field by field) or `JSON` (write the OData query yourself). Version 1.3 adds `OData` (one field per OData option) and calls JSON `Advanced (JSON)` |
-| Filter | string | *OData mode, version 1.3.* The `$filter`, sent as written. Empty reads every record |
-| Select | string | *OData mode, version 1.3.* The `$select`: field names separated by commas. Empty returns all fields |
-| Order By | string | *OData mode, version 1.3.* The `$orderby`, e.g. `CreatedDateTime desc` |
-| OData Query (JSON) | json | *JSON / Advanced (JSON) mode.* OData query options sent to Ivanti exactly as written |
+| Mode | dropdown | *Node version 1.1+.* `Manual` (build the query field by field) or `JSON` (write the OData query yourself) |
+| OData Query (JSON) | json | *JSON mode.* The OData options `$filter`, `$select` and `$orderby`, sent to Ivanti as written |
 | Select All Fields | boolean | *Manual mode.* Return all fields or specify subset |
 | Select Fields | collection | *Manual mode.* Array of field names to return |
 | OData Filter | collection | *Manual mode.* Structured filters (field, operator, value) |
@@ -375,17 +372,24 @@ $filter=Status eq 'Active' and contains(Subject,'printer')&$select=RecId,Subject
 
 Because nothing is checked or escaped in JSON mode, quote text values yourself (`'Active'`) and double any single quote inside them (`'O''Brien'`).
 
-From node version 1.3, the keys are checked: only `$filter`, `$select` and `$orderby` are accepted. Ivanti ignores any other key, so a typo such as `"filter"` or `"$filtr"` would read every record; instead the node now fails with `Unknown OData option: filter` (and suggests `$filter`). `$search` is refused too: Ivanti does not support it here, so use **Business Object → Search by Keyword**. Versions 1.1 and 1.2 still pass any key.
+**JSON mode in node version 1.3** checks the keys and accepts more ways to write them:
 
-**OData mode (node version 1.3)**: set **Mode** to `OData` and fill in only the options you need: **Filter**, **Select** and **Order By**. Each field takes an expression of its own, so a workflow that computes only the filter needs no JSON around it:
+- Only `$filter`, `$select` and `$orderby` are accepted, with or without the `$` sign and in any letter case: `{"filter": "…"}` and `{"$Filter": "…"}` both send `$filter`. Ivanti ignores any other key, so a typo such as `"$filtr"` would read every record; instead the node fails with `Unknown OData option: $filtr`. `$search` is refused too: Ivanti does not support it here, so use **Business Object → Search by Keyword**. The same option given twice (`"filter"` and `"$filter"`) is refused.
+- `$select` and `$orderby` may also be lists, which are sent joined with commas:
 
+```json
+{
+  "$filter": "Status eq 'Active'",
+  "$select": ["RecId", "Subject", "Status"],
+  "$orderby": ["LastModDateTime asc", "RecId asc"]
+}
 ```
-Filter: Status eq 'Active' and Owner eq '{{ $json.owner }}'
-```
 
-This sends only `$filter=Status eq 'Active' and Owner eq '…'`; empty fields are left out. As in JSON mode, the values are sent as written, so quote and escape text values yourself. With **Return All** on and an empty Filter, the node reads every record of the business object, and the editor shows a warning. To pass the whole query as one object, for example built by an earlier node, use **Advanced (JSON)**.
+Versions 1.1 and 1.2 still pass any key as written and do not accept lists.
 
-**Node versions**: workflows created before version 1.1 keep version 1, with the "Define Filter as JSON" toggle and no Mode field. Workflows keep the version they were built with; new nodes are added as the latest version (1.3). Version 1.2 also changes the Automation › Report Transaction Status options, and version 1.3 adds the OData mode.
+**Values from the input**: switch the field to **Expression** and write the values into the JSON, for example `{ "$filter": "Owner eq '{{ $json.owner }}'" }`, or pass a whole query object built by an earlier node with `{{ $json.query }}`. In both cases the values are still sent as written, so quote and escape text values yourself.
+
+**Node versions**: workflows created before version 1.1 keep version 1, with the "Define Filter as JSON" toggle and no Mode field. Workflows keep the version they were built with; new nodes are added as the latest version (1.3). Version 1.2 also changes the Automation › Report Transaction Status options, and version 1.3 checks the keys of the JSON mode.
 
 The same options are available on the **Ivanti Neurons for ITSM Polling Trigger**.
 
