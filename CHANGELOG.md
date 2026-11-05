@@ -12,6 +12,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **Attachment → Read** has a **Put Output File in Field** parameter for the binary field the file is written to (#30). It defaults to `data`, the field used so far
 
 ### Changed
+- **Business Object → Get Many** and **Polling Trigger** version **1.3**, Advanced (JSON) mode: only `$filter`, `$select` and `$orderby` are accepted (#26). Ivanti ignores other keys, so a typo read every record silently; now `{"filter": "…"}` fails with "Unknown OData option: filter" and suggests `$filter`, and `$search`, which Ivanti does not support here, points to Search by Keyword. Versions 1.1 and 1.2 still pass any key
 - **Attachment → Read** keeps the input item's binary fields and adds the file beside them, instead of replacing them (#30). A field with the same name as the output field is still replaced
 - **Attachment → Read** streams the download instead of reading the whole file into memory first (#30). With n8n's binary data kept on disk or in S3, a large attachment no longer has to fit in memory
 

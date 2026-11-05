@@ -176,15 +176,45 @@ export function parseRawFilter(this: QueryCtx, raw: unknown): ODataFilterEntry[]
 const PAGING_OPTIONS = ['$top', '$skip'];
 
 /**
+ * The query options Ivanti documents for reading a business object, accepted in
+ * JSON mode from node version 1.3. Ivanti ignores any other key, so a typo such
+ * as `filter` or `$filtr` would read the business object unfiltered.
+ */
+const ODATA_OPTIONS = ['$filter', '$select', '$orderby'];
+
+/**
+ * Refuses a JSON-mode key that is not an accepted query option (node version 1.3+).
+ * Paging options are refused earlier, with their own message.
+ */
+function assertKnownODataOption(this: QueryCtx, key: string, itemIndex: number): void {
+    if (ODATA_OPTIONS.includes(key)) return;
+
+    if (key.toLowerCase() === '$search') {
+        throw new NodeOperationError(this.getNode(), '"$search" cannot be used here', {
+            itemIndex,
+            description: 'Ivanti does not support $search for this read. To search by keyword, use Business Object → Search by Keyword.',
+        });
+    }
+
+    // `filter`, `$Filter` or `$FILTER` for `$filter`
+    const suggestion = ODATA_OPTIONS.find((option) => option === `$${key.replace(/^\$/, '').toLowerCase()}`);
+    throw new NodeOperationError(this.getNode(), `Unknown OData option: ${key}`, {
+        itemIndex,
+        description: `${suggestion ? `Did you mean "${suggestion}"? ` : ''}Use ${ODATA_OPTIONS.join(', ')}. Ivanti ignores other keys, which would read every record.`,
+    });
+}
+
+/**
  * Reads the "OData Query (JSON)" parameter (JSON mode, node version 1.1+).
  *
  * The query is passed to Ivanti exactly as written: no field validation, value
  * quoting or other transformation. Only the shape is checked: it must be a JSON
  * object of plain values, and must not set `$top` / `$skip`, which Return All
- * and Limit use for paging.
+ * and Limit use for paging. From node version 1.3, each key must also be one of
+ * `ODATA_OPTIONS`.
  *
  * @throws {NodeOperationError} when the JSON is invalid, a value is not a plain
- *   value, or a paging option is set
+ *   value, a paging option is set, or (version 1.3+) a key is not an OData option
  */
 export function parseNativeODataQuery(
     this: QueryCtx,
@@ -198,6 +228,8 @@ export function parseNativeODataQuery(
         throw emptyQueryError.call(this, itemIndex);
     }
     const parsed = parseJsonObjectParameter.call(this, raw, 'The "OData Query (JSON)" field', itemIndex);
+    // Versions 1.1 and 1.2 keep passing any key, so existing workflows run as before.
+    const knownOptionsOnly = this.getNode().typeVersion >= 1.3;
 
     const query: IDataObject = {};
     for (const [key, value] of Object.entries(parsed)) {
@@ -208,6 +240,7 @@ export function parseNativeODataQuery(
                 { itemIndex, description: 'Paging is controlled by Return All and Limit' },
             );
         }
+        if (knownOptionsOnly) assertKnownODataOption.call(this, key, itemIndex);
         if (value === undefined || value === null) continue;
         if (typeof value === 'object') {
             throw new NodeOperationError(

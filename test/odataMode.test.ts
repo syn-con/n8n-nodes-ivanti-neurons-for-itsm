@@ -1,7 +1,7 @@
 /* eslint-disable @n8n/community-nodes/no-restricted-imports -- tests are not published, so they may use the Node test runner */
 import assert from 'node:assert/strict';
 import { describe, it } from 'node:test';
-import { NodeHelpers, type INodeParameters, type INodeProperties } from 'n8n-workflow';
+import { NodeHelpers, NodeOperationError, type INodeParameters, type INodeProperties } from 'n8n-workflow';
 
 import { IvantiNeuronsForItsm } from '../nodes/IvantiNeuronsForITSM/IvantiNeuronsForItsm.node';
 import { IvantiNeuronsForItsmTrigger } from '../nodes/IvantiNeuronsForITSM/IvantiNeuronsForItsmTrigger.node';
@@ -111,5 +111,64 @@ describe('OData mode in the editor', () => {
 	it('is version 1.3 of both nodes', () => {
 		assert.deepEqual(new IvantiNeuronsForItsm().description.version, [1, 1.1, 1.2, 1.3]);
 		assert.deepEqual(new IvantiNeuronsForItsmTrigger().description.version, [1, 1.1, 1.2, 1.3]);
+	});
+});
+
+describe('Advanced (JSON) mode keys (version 1.3)', () => {
+	const jsonQuery = (odataQuery: string, typeVersion = 1.3) =>
+		buildODataQuery.call(
+			fakeExecuteContext({ typeVersion, parameters: { queryMode: 'json', odataQuery } }).ctx,
+			0,
+		);
+	/** Asserts the error message and its description. */
+	const refused = (message: string, description: RegExp) => (error: unknown) => {
+		assert.ok(error instanceof NodeOperationError);
+		assert.equal(error.message, message);
+		assert.match(String(error.description), description);
+		return true;
+	};
+
+	it('sends $filter, $select and $orderby as today', () => {
+		assert.deepEqual(jsonQuery('{"$filter":"Status eq \'Active\'","$select":"RecId","$orderby":"RecId desc"}'), {
+			$filter: "Status eq 'Active'",
+			$select: 'RecId',
+			$orderby: 'RecId desc',
+		});
+	});
+
+	it('refuses a key without the dollar sign, and suggests the option', () => {
+		assert.throws(
+			() => jsonQuery('{"filter":"Status eq \'Active\'"}'),
+			refused('Unknown OData option: filter', /Did you mean "\$filter"\?/),
+		);
+	});
+
+	it('refuses a key in the wrong case', () => {
+		assert.throws(() => jsonQuery('{"$OrderBy":"RecId"}'), refused('Unknown OData option: $OrderBy', /Did you mean "\$orderby"\?/));
+	});
+
+	it('refuses a misspelt key without a suggestion', () => {
+		assert.throws(
+			() => jsonQuery('{"$filter":"Status eq \'Active\'","$filtr":"x"}'),
+			refused('Unknown OData option: $filtr', /^Use \$filter, \$select, \$orderby\./),
+		);
+	});
+
+	it('refuses $search and points to Search by Keyword', () => {
+		assert.throws(() => jsonQuery('{"$search":"printer"}'), refused('"$search" cannot be used here', /Search by Keyword/));
+	});
+
+	it('refuses an unknown key even when its value is null', () => {
+		assert.throws(() => jsonQuery('{"$filter":"x","$count":null}'), /Unknown OData option: \$count/);
+	});
+
+	it('keeps the paging message for $top', () => {
+		assert.throws(() => jsonQuery('{"$top":5}'), /"\$top" cannot be set/);
+	});
+
+	it('still passes any key on versions 1.1 and 1.2', () => {
+		for (const typeVersion of [1.1, 1.2]) {
+			assert.deepEqual(jsonQuery('{"filter":"x","$count":true}', typeVersion), { filter: 'x', $count: true });
+		}
 	});
 });

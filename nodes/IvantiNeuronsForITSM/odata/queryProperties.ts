@@ -133,7 +133,7 @@ export const odataListProperties: INodeProperties[] = [
         default:
             '{\n  "$filter": "Status eq \'Active\'",\n  "$select": "RecId,Subject,Status",\n  "$orderby": "CreatedDateTime desc"\n}',
         description:
-            'OData query options sent to Ivanti exactly as written, for example "$filter", "$select" and "$orderby". Any OData syntax Ivanti supports can be used. Paging ("$top" and "$skip") is controlled by Return All and Limit.',
+            'OData query options sent to Ivanti exactly as written, for example "$filter", "$select" and "$orderby". Any OData syntax Ivanti supports can be used in the values. From node version 1.3, only these three keys are accepted. Paging ("$top" and "$skip") is controlled by Return All and Limit.',
         displayOptions: { show: { ...FROM_V1_1, queryMode: ['json'] } },
     },
     {

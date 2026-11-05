@@ -375,6 +375,8 @@ $filter=Status eq 'Active' and contains(Subject,'printer')&$select=RecId,Subject
 
 Because nothing is checked or escaped in JSON mode, quote text values yourself (`'Active'`) and double any single quote inside them (`'O''Brien'`).
 
+From node version 1.3, the keys are checked: only `$filter`, `$select` and `$orderby` are accepted. Ivanti ignores any other key, so a typo such as `"filter"` or `"$filtr"` would read every record; instead the node now fails with `Unknown OData option: filter` (and suggests `$filter`). `$search` is refused too: Ivanti does not support it here, so use **Business Object → Search by Keyword**. Versions 1.1 and 1.2 still pass any key.
+
 **OData mode (node version 1.3)**: set **Mode** to `OData` and fill in only the options you need: **Filter**, **Select** and **Order By**. Each field takes an expression of its own, so a workflow that computes only the filter needs no JSON around it:
 
 ```
