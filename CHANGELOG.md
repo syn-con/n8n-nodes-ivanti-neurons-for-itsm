@@ -5,21 +5,27 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [Unreleased]
+## [1.7.0] - 2026-11-05
 
 ### Added
 - **Attachment → Read** has a **Put Output File in Field** parameter for the binary field the file is written to (#30). It defaults to `data`, the field used so far
+- The package ships a **LICENSE** file (MIT), and the README links it (#42)
 
 ### Changed
 - The **Attachment** operations are named **Delete**, **Read** and **Upload** in the editor, without repeating "Attachment" (n8n review). Saved workflows are not affected
 - **Business Object → Get Many** and **Polling Trigger** version **1.3**, JSON mode (#26): only `$filter`, `$select` and `$orderby` are accepted, with or without the `$` sign and in any letter case (`{"filter": "…"}` sends `$filter`). Ivanti ignores other keys, so a typo read every record silently; now `{"$filtr": "…"}` fails with "Unknown OData option: $filtr", the same option given twice is refused, and `$search`, which Ivanti does not support here, points to Search by Keyword. `$select` and `$orderby` may also be lists, such as `["LastModDateTime asc", "RecId asc"]`, sent joined with commas. The field help explains how to fill in values with an expression. Versions 1.1 and 1.2 still pass any key as written
 - **Attachment → Read** keeps the input item's binary fields and adds the file beside them, instead of replacing them (#30). A field with the same name as the output field is still replaced
 - **Attachment → Read** streams the download instead of reading the whole file into memory first (#30). With n8n's binary data kept on disk or in S3, a large attachment no longer has to fit in memory
+- **Business Object → Search by Keyword**: the **Select Fields** names accept expressions, as in Get Many (#34)
+- README: install steps use the scoped package name and n8n's documented manual and Docker installs; a new **Queue Mode** section says every worker and webhook process needs the package; **Rate Limits** no longer lists invented limits or a 429 back-off, and a new **API Limits** section covers paging, the filter operators and the 204 and 400 answers (#40)
 
 ### Fixed
 - **Attachment → Read** reports Ivanti's own error, with its code and the HTTP status (for example `Ivanti API request failed (HTTP 400, ISM_4000): Attachment with ID … was not found`), instead of n8n's generic "The resource you are requesting could not be found" (#29). With Continue On Fail the item carries `httpCode`
 - Every Ivanti error message now includes Ivanti's error code when the reply has one, shows the reply in the error details, and is shortened to 500 characters of reply text (#29). **Attachment → Upload** still lists the reason of each refused file
 - **Attachment → Read** reads the file name as RFC 6266 describes (#30): UTF-8 names sent as `filename*=UTF-8''r%C3%A9sum%C3%A9.pdf` become `résumé.pdf`, and parameters after the name (`a.pdf"; size=1`) are no longer part of it
+- **Service Request → Get Service Request Parameters** and **Create Service Request (Advanced)** (Manual mode), and the parameter lists in the editor, escape the template ID in their filter (#20). A quote no longer breaks the filter, and in the two operations a value that is not a RecId fails with a clear error instead of returning nothing
+- An Ivanti error reply was shown as raw JSON text instead of its message; it is now parsed first (#31)
+- The **Polling Trigger** subtitle no longer shows a poll interval parameter that does not exist, and the node documentation links point at the README instead of a placeholder site (#40)
 
 ## [1.6.0] - 2026-11-04
 
