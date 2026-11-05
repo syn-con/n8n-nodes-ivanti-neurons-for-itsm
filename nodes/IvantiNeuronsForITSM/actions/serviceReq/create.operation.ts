@@ -11,7 +11,7 @@ import { updateDisplayOptions } from 'n8n-workflow';
 import { ivantiApiRequest, ivantiApiRequestAllItems } from '../../transports';
 import { continueOnFailItem, itemError } from '../itemErrors';
 import { getOverrideHeaders } from '../requestOptions';
-import { flattenSingleValueCollection, parseJsonObjectParameter, serviceReqTemplateRLC } from '../../common';
+import { assertSafeRecordId, escapeODataString, flattenSingleValueCollection, parseJsonObjectParameter, serviceReqTemplateRLC } from '../../common';
 const serviceReqParamsUrl = "/odata/businessobject/ServiceReqTemplateParams";
 
 /**
@@ -320,8 +320,9 @@ async function fetchParameterTypes(
 	serviceReqTemplateId: string,
 	headers: IDataObject,
 ): Promise<Record<string, string>> {
+	assertSafeRecordId.call(this, serviceReqTemplateId);
 	const schema = await ivantiApiRequestAllItems.call(this, 'GET', serviceReqParamsUrl, {
-		$filter: `ParentLink_RecID eq '${serviceReqTemplateId}'`,
+		$filter: `ParentLink_RecID eq ${escapeODataString(serviceReqTemplateId)}`,
 		$select: 'RecId,DisplayType',
 	}, undefined, headers) as IDataObject[];
 

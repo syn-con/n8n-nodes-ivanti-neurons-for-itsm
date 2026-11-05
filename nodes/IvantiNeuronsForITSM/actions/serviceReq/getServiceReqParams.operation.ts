@@ -10,6 +10,7 @@ import  {
 import { ivantiApiRequestAllItems } from '../../transports'
 import { continueOnFailItem, itemError } from '../itemErrors';
 import { getOverrideHeaders } from '../requestOptions';
+import { assertSafeRecordId, escapeODataString } from '../../common';
 
 const serviceReqParamsUrl = "/odata/businessobject/ServiceReqTemplateParams";
 
@@ -53,8 +54,9 @@ export async function execute(this: IExecuteFunctions): Promise<INodeExecutionDa
 	for (let i = 0; i < items.length; i++) {
 		try {
 			const serviceReqTemplateId = this.getNodeParameter('serviceReqTemplateId', i) as string;
+			assertSafeRecordId.call(this, serviceReqTemplateId);
 			const response = await ivantiApiRequestAllItems.call(this, 'GET', serviceReqParamsUrl, {
-				$filter: `ParentLink_RecID eq '${serviceReqTemplateId}'`,
+				$filter: `ParentLink_RecID eq ${escapeODataString(serviceReqTemplateId)}`,
 			}, undefined, getOverrideHeaders.call(this, i));
 			if(response === undefined) {
 				continue;

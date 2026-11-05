@@ -1,6 +1,7 @@
 import { FieldType, IDataObject, ILoadOptionsFunctions, INodeListSearchResult, ResourceMapperField } from 'n8n-workflow';
 
 import { ivantiApiRequestAllItems } from '../transports';
+import { escapeODataString } from '../common';
 
 const serviceReqTemplateUrl = "/odata/businessobject/ServiceReqTemplates";
 const serviceReqTemplateFilter = "Status eq 'Published (Automatic)'";
@@ -133,7 +134,7 @@ export async function getServiceRequestParametersSchema(this: ILoadOptionsFuncti
 	}
 	try {
 		const result: IDataObject[] = await ivantiApiRequestAllItems.call(this, 'GET', serviceReqParamsUrl, {
-			"$filter": `ParentLink_RecID eq '${serviceReqTemplateId}'`,
+			"$filter": `ParentLink_RecID eq ${escapeODataString(serviceReqTemplateId)}`,
 			"$select": 'RecId,DisplayName,DisplayType,Name,ConfigOptions,RequiredExpression',
 		});
 
@@ -234,7 +235,7 @@ export async function getServiceRequestParametersSimplifiedSchema(this: ILoadOpt
 
 	try {
 		const result: IDataObject[] = await ivantiApiRequestAllItems.call(this, 'GET', serviceReqParamsUrl, {
-			'$filter': `ParentLink_RecID eq '${serviceReqTemplateId}'`,
+			'$filter': `ParentLink_RecID eq ${escapeODataString(serviceReqTemplateId)}`,
 			'$select': 'RecId,DisplayName,DisplayType,Name,ConfigOptions,RequiredExpression',
 		});
 
