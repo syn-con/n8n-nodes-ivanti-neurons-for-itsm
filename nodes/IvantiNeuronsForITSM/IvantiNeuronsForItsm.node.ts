@@ -44,7 +44,7 @@ export class IvantiNeuronsForItsm implements INodeType {
         name: 'ivantiNeuronsForItsm',
         group: ['transform'],
         icon: { light: 'file:../../icons/ivant-neurons-for-itsm.svg', dark: 'file:../../icons/ivant-neurons-for-itsm.dark.svg' },
-        version: [1, 1.1, 1.2],
+        version: [1, 1.1, 1.2, 1.3],
         subtitle: '={{ $parameter["operation"] + ": " + $parameter["resource"] }}',
         description: 'Interact with Ivanti Neurons for ITSM API',
         defaults: {

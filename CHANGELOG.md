@@ -8,6 +8,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Added
+- **Ivanti Neurons for ITSM** node and **Polling Trigger** version **1.3**: a third **Mode**, **OData**, with one field per OData option: **Filter**, **Select** and **Order By** (#27). Each takes its own expression and is sent as written; empty fields are left out, so a node with only a Filter sends only `$filter`. With **Return All** on and an empty Filter, the editor warns that every record is read. The JSON mode is kept as **Advanced (JSON)**. Versions 1.1 and 1.2 keep Manual and JSON
 - **Attachment → Read** has a **Put Output File in Field** parameter for the binary field the file is written to (#30). It defaults to `data`, the field used so far
 
 ### Changed

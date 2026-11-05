@@ -233,6 +233,32 @@ function emptyQueryError(this: QueryCtx, itemIndex: number): NodeOperationError 
 }
 
 /**
+ * OData mode (node version 1.3): each text field and the query option it fills.
+ * There is no Search field: Ivanti does not support `$search` in the queries Get Many
+ * and the polling trigger send (Search by Keyword uses it on its own).
+ */
+const ODATA_MODE_FIELDS: Array<[parameter: string, option: string]> = [
+    ['odataFilterExpression', '$filter'],
+    ['odataSelect', '$select'],
+    ['odataOrderBy', '$orderby'],
+];
+
+/**
+ * Builds the query in OData mode (node version 1.3): each non-empty field becomes
+ * its query option, sent as written, like the JSON mode. Empty fields are left
+ * out, so a node with only a Filter sends only `$filter`.
+ */
+function buildOptionsQuery(this: QueryCtx, itemIndex: number): IDataObject {
+    const query: IDataObject = {};
+    for (const [parameter, option] of ODATA_MODE_FIELDS) {
+        const value = readParam.call(this, parameter, itemIndex, '');
+        const text = value === undefined || value === null ? '' : String(value).trim();
+        if (text !== '') query[option] = text;
+    }
+    return query;
+}
+
+/**
  * Reads a node parameter in either context. Execute functions take
  * `(name, itemIndex, fallback)`, but poll functions take `(name, fallback)`:
  * passing an item index there would make it the fallback.
@@ -259,12 +285,16 @@ export function buildODataQuery(
     options: BuildODataQueryOptions = {},
 ): IDataObject {
     const nodeVersion = this.getNode().typeVersion;
-    if (nodeVersion >= 1.1 && readParam.call(this, 'queryMode', itemIndex, 'manual') === 'json') {
+    const queryMode = nodeVersion >= 1.1 ? readParam.call(this, 'queryMode', itemIndex, 'manual') : 'manual';
+    if (queryMode === 'json') {
         return parseNativeODataQuery.call(
             this,
             readParam.call(this, 'odataQuery', itemIndex, '{}'),
             itemIndex,
         );
+    }
+    if (queryMode === 'odata' && nodeVersion >= 1.3) {
+        return buildOptionsQuery.call(this, itemIndex);
     }
 
     const query: IDataObject = {};
