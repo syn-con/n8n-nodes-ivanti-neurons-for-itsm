@@ -1634,7 +1634,7 @@ Have an idea? Open a GitHub issue with:
 
 ## License
 
-[MIT](LICENSE.md)
+[MIT](LICENSE)
 
 Copyright (c) 2024 SYNERGY
 
