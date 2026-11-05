@@ -1024,7 +1024,7 @@ Body:
 }
 ```
 
-**Upload Attachment**:
+**Attachment → Upload**:
 ```javascript
 Business Object: Incidents
 Record ID: {{ $('Polling Trigger').item.json.RecId }}

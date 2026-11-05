@@ -1,5 +1,5 @@
 import type { IExecuteFunctions, INodeExecutionData } from 'n8n-workflow';
-import { NodeApiError, NodeOperationError } from 'n8n-workflow';
+import { NodeOperationError } from 'n8n-workflow';
 
 import type { Ivanti } from './node.type';
 
@@ -18,66 +18,49 @@ import * as automation from './automation'
  * `Ivanti` discriminated-union value, and delegates execution to the matching
  * operation module's `execute` function.
  *
- * All unexpected errors are re-wrapped as `NodeOperationError` so n8n can
- * display them cleanly in the UI.
+ * There is no try/catch here: every operation already turns the errors of its
+ * items into n8n errors (`itemError`), which keep the HTTP code, description and
+ * item index, and an unknown resource throws a `NodeOperationError` below.
  *
  * @returns A two-dimensional array of `INodeExecutionData` as required by
  *          `INodeType.execute` (outer array = output connections, inner = items).
  */
 export async function router(this: IExecuteFunctions) {
-
 	let returnData: INodeExecutionData[] = [];
-	try {
-		const resource = this.getNodeParameter<Ivanti>('resource', 0);
-		const operation = this.getNodeParameter('operation', 0);
-		const ivanti = {
-			resource,
-			operation,
-		} as Ivanti;
+	const resource = this.getNodeParameter<Ivanti>('resource', 0);
+	const operation = this.getNodeParameter('operation', 0);
+	const ivanti = {
+		resource,
+		operation,
+	} as Ivanti;
 
-		switch (ivanti.resource) {
-			case 'search':
-				returnData = await search[ivanti.operation].execute.call(this);
-				break;
-			case 'businessobject':
-				returnData = await businessobject[ivanti.operation].execute.call(this);
-				break;
-			case 'attachment':
-				returnData = await attachment[ivanti.operation].execute.call(this);
-				break;
-			case 'relationship':
-				returnData = await relationship[ivanti.operation].execute.call(this);
-				break;
-			case 'serviceReq':
-				returnData = await serviceReq[ivanti.operation].execute.call(this);
-				break;
-			case 'quickAction':
-				returnData = await quickAction[ivanti.operation].execute.call(this);
-				break;
-			case 'automation':
-				returnData = await automation[ivanti.operation].execute.call(this);
-				break;
-			default:
-				throw new NodeOperationError(
-					this.getNode(),
-					`The resource "${(ivanti as Ivanti).resource}" is not implemented`,
-				);
-		}
-
-
-	} catch (error) {
-		// Errors from the operations are already n8n errors carrying the HTTP
-		// code, description and item index; wrapping them again would drop that.
-		if (error instanceof NodeApiError || error instanceof NodeOperationError) {
-			throw error;
-		}
-		// NodeOperationError cannot wrap a thrown value that is not an Error or a
-		// string (it crashes with "Cannot use 'in' operator ..."), so convert
-		// anything else to text first.
-		throw new NodeOperationError(
-			this.getNode(),
-			error instanceof Error ? error : String(error),
-		);
+	switch (ivanti.resource) {
+		case 'search':
+			returnData = await search[ivanti.operation].execute.call(this);
+			break;
+		case 'businessobject':
+			returnData = await businessobject[ivanti.operation].execute.call(this);
+			break;
+		case 'attachment':
+			returnData = await attachment[ivanti.operation].execute.call(this);
+			break;
+		case 'relationship':
+			returnData = await relationship[ivanti.operation].execute.call(this);
+			break;
+		case 'serviceReq':
+			returnData = await serviceReq[ivanti.operation].execute.call(this);
+			break;
+		case 'quickAction':
+			returnData = await quickAction[ivanti.operation].execute.call(this);
+			break;
+		case 'automation':
+			returnData = await automation[ivanti.operation].execute.call(this);
+			break;
+		default:
+			throw new NodeOperationError(
+				this.getNode(),
+				`The resource "${(ivanti as Ivanti).resource}" is not implemented`,
+			);
 	}
 	return [returnData];
 }
