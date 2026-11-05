@@ -8,12 +8,12 @@
     "resources": {
         "credentialDocumentation": [
             {
-                "url": "http://httpbin.org/#/Auth/get_bearer"
+                "url": "https://github.com/syn-con/n8n-nodes-ivanti-neurons-for-itsm#ivanti-neurons-for-itsm-api"
             }
         ],
         "primaryDocumentation": [
             {
-                "url": "http://httpbin.org/"
+                "url": "https://github.com/syn-con/n8n-nodes-ivanti-neurons-for-itsm#1-ivanti-neurons-for-itsm-action-node"
             }
         ]
     }

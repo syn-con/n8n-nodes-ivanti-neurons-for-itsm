@@ -1,5 +1,5 @@
 {
-    "node": "@synergyconsulting/n8n-nodes-ivanti-neurons-for-itsm.ivantiNeuronsForItsmPollingTrigger",
+    "node": "@synergyconsulting/n8n-nodes-ivanti-neurons-for-itsm.ivantiNeuronsForItsmTrigger",
     "nodeVersion": "1.0",
     "codexVersion": "0.1",
     "categories": [
@@ -8,12 +8,12 @@
     "resources": {
         "credentialDocumentation": [
             {
-                "url": "https://help.ivanti.com/res/help/en_US/IA/2023/GS/About-Automation.htm"
+                "url": "https://github.com/syn-con/n8n-nodes-ivanti-neurons-for-itsm#ivanti-neurons-for-itsm-api"
             }
         ],
         "primaryDocumentation": [
             {
-                "url": "https://help.ivanti.com/res/help/en_US/IA/2023/GS/About-Automation.htm"
+                "url": "https://github.com/syn-con/n8n-nodes-ivanti-neurons-for-itsm#2-ivanti-neurons-for-itsm-polling-trigger"
             }
         ]
     }

@@ -49,26 +49,25 @@ Ivanti Neurons for ITSM is an enterprise IT service management platform for mana
 
 1. In n8n, navigate to **Settings** → **Community Nodes**
 2. Click **Install a community node**
-3. Enter `n8n-nodes-ivanti-neurons-for-itsm` in the search field
+3. Enter `@synergyconsulting/n8n-nodes-ivanti-neurons-for-itsm` in the search field
 4. Click **Install**
 
 ### Option 2: Manual Installation
 
-For self-hosted n8n instances:
+For self-hosted n8n instances, install the package into the `nodes` folder of the n8n user folder
+(in Docker, first open a shell with `docker exec -it n8n sh`):
 
 ```bash
-# Navigate to your n8n installation directory
-cd ~/.n8n
-
-# Install the package
-npm install n8n-nodes-ivanti-neurons-for-itsm
-
-# Restart n8n
-n8n start
+mkdir -p ~/.n8n/nodes
+cd ~/.n8n/nodes
+npm install @synergyconsulting/n8n-nodes-ivanti-neurons-for-itsm
 ```
+
+Then restart n8n.
 
 ### Option 3: Docker Installation
 
+From n8n 2.21.0, n8n can install community packages from environment variables at startup.
 Add to your Docker Compose file:
 
 ```yaml
@@ -76,9 +75,23 @@ services:
   n8n:
     image: n8nio/n8n:latest
     environment:
-      - N8N_COMMUNITY_PACKAGES=n8n-nodes-ivanti-neurons-for-itsm
+      - N8N_COMMUNITY_PACKAGES_MANAGED_BY_ENV=true
+      - 'N8N_COMMUNITY_PACKAGES=[{"name":"@synergyconsulting/n8n-nodes-ivanti-neurons-for-itsm"}]'
     # ... other configuration
 ```
+
+With `N8N_COMMUNITY_PACKAGES_MANAGED_BY_ENV=true`, n8n makes the installed packages match the
+list on every start: it **uninstalls any community package that is not in the list**, and the
+Community Nodes settings page becomes read-only. List every community package you use. See
+[n8n: install community nodes with environment variables](https://docs.n8n.io/integrations/community-nodes/installation/).
+
+### Queue Mode
+
+In queue mode, workflows run on the worker processes, so **every worker and webhook processor needs
+the package**, not only the main instance. A worker without it fails every run of a workflow that
+uses these nodes with `Unrecognized node type`, including the error workflow. Install the package
+on each process with Option 2, or set the two environment variables of Option 3 on every main,
+worker and webhook process, so a recreated container installs it again.
 
 ---
 
@@ -852,7 +865,7 @@ Report the outcome of an Ivanti automation workflow back to the platform.
 ```javascript
 Transaction ID: {{ $('Trigger').item.json.TransactionId }}
 Status: Completed
-Job Result: Successfully provisioned user account
+Result: Successfully provisioned user account
 ```
 
 ---
@@ -1472,16 +1485,29 @@ https://{tenant}/HEAT/api
 
 ### Rate Limits
 
-Ivanti API rate limits vary by instance and license. Contact your Ivanti administrator for details.
+Ivanti does not publish a per-minute rate limit. Ask your Ivanti administrator which limits apply
+to your tenant.
 
-**Typical Limits**:
-- Cloud: 100 requests/minute per API key
-- On-Premises: Configurable, typically 500 requests/minute
+The node does not throttle or retry requests. A refused request, including HTTP 429, fails the item,
+or becomes an error item with **Continue On Fail**. To retry, use n8n's **Retry On Fail** node
+setting.
 
-**Best Practices**:
-- Implement exponential backoff on 429 errors
-- Cache results when appropriate
-- Batch operations when possible
+To keep the number of calls down:
+- Use filters and **Select Fields** so only the records and fields you need are fetched
+- Use a **Limit** instead of **Return All** where possible
+- Poll no more often than the workflow needs
+
+### API Limits
+
+- **Paging**: OData list requests (Get Many, Search by Keyword, the Polling Trigger and the Service
+  Request parameter lookups) read 100 records per request and fetch further pages until the Limit
+  is reached, or all records with Return All.
+- **Filter operators**: Manual mode offers eight: Equals, Not Equals, Greater Than, Greater Than or
+  Equal, Less Than, Less Than or Equal, Is Null and Is Not Null.
+- **No matching records**: Ivanti may answer with HTTP 204 and an empty body. The node returns no
+  items, not an error.
+- **Invalid query**: an unknown field name or a malformed filter answers HTTP 400, and the node
+  shows Ivanti's message.
 
 ---
 
@@ -1597,7 +1623,7 @@ A failed authentication answers 401 Unauthorized instead, with no response body.
 
 1. **Documentation**: Start with this README and [n8n docs](https://docs.n8n.io/)
 2. **Community**: Ask questions in [n8n community forum](https://community.n8n.io/)
-3. **Issues**: Report bugs on [GitHub Issues](https://github.com/KonstantinShturo/n8n-nodes-ivanti-neurons-for-itsm/issues)
+3. **Issues**: Report bugs on [GitHub Issues](https://github.com/syn-con/n8n-nodes-ivanti-neurons-for-itsm/issues)
 4. **Support**: For Connector nodes, contact [SYNERGY](mailto:support@synergy.eu)
 
 ### Contributing
