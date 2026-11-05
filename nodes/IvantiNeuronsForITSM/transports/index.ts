@@ -62,14 +62,8 @@ export async function ivantiApiRequest(
 	applyHeaders(options, headers);
 
 	const response = await sendRequest.call(this, options);
-	if (response.statusCode < 200 || response.statusCode >= 300) {
-		// Hand the full response to NodeApiError so the HTTP status, headers and
-		// body are preserved in the execution log and UI, while still surfacing a
-		// readable Ivanti-specific message.
-		throw new NodeApiError(this.getNode(), response as JsonObject, {
-			message: buildIvantiErrorMessage(response.statusCode, parseJsonBody(response.body)),
-			httpCode: String(response.statusCode),
-		});
+	if (isFailure(response)) {
+		throw ivantiApiError.call(this, response, parseJsonBody(response.body));
 	}
 	return parseJsonBody(response.body);
 }
@@ -273,20 +267,42 @@ export async function ivantiApiRequestFormData(
 	applyHeaders(options, headers);
 
 	const response = await sendRequest.call(this, options);
-	if (response.statusCode < 200 || response.statusCode >= 300) {
-		// Keep Ivanti's reply body so the user sees why the upload was refused,
-		// instead of a bare "Request failed with status code ..." from axios.
-		const failures = extractUploadFailures(parseJsonBody(response.body));
-		throw new NodeApiError(this.getNode(), response as JsonObject, {
-			message:
-				failures.length > 0
-					? `Ivanti API request failed (HTTP ${response.statusCode}): ${failures.join('; ')}`
-					: buildIvantiErrorMessage(response.statusCode, parseJsonBody(response.body)),
-			description: describeBody(response.body),
-			httpCode: String(response.statusCode),
-		});
+	if (isFailure(response)) {
+		throw ivantiApiError.call(this, response, parseJsonBody(response.body));
 	}
 	return parseJsonBody(response.body);
+}
+
+/** True for any answer outside 2xx. Every helper sends `ignoreHttpStatusErrors` and checks this. */
+function isFailure(response: { statusCode: number }): boolean {
+	return response.statusCode < 200 || response.statusCode >= 300;
+}
+
+/**
+ * The error for a refused request, shared by every request helper: Ivanti's own
+ * message and error code (e.g. ISM_4000), the HTTP status, and the reply body in
+ * the description. For an upload, the reasons of each refused file are listed.
+ *
+ * @param body - The reply body, already parsed (or text when it is not JSON)
+ */
+function ivantiApiError(
+	this: IExecuteFunctions | IExecuteSingleFunctions | IHookFunctions | ILoadOptionsFunctions | ITriggerFunctions | IPollFunctions,
+	response: { statusCode: number; headers?: unknown },
+	body: unknown,
+): NodeApiError {
+	const failures = extractUploadFailures(body);
+	return new NodeApiError(
+		this.getNode(),
+		{ statusCode: response.statusCode, headers: response.headers, body } as JsonObject,
+		{
+			message:
+				failures.length > 0
+					? `${errorPrefix(response.statusCode, body)}: ${failures.join('; ')}`
+					: buildIvantiErrorMessage(response.statusCode, body),
+			description: describeBody(body),
+			httpCode: String(response.statusCode),
+		},
+	);
 }
 
 /**
@@ -362,10 +378,39 @@ export async function ivantiApiRequestBinary(
 		encoding: 'stream',
 		skipSslCertificateValidation: credential.skipSslVerification as boolean,
 		returnFullResponse: true,
-
+		ignoreHttpStatusErrors: true,
 	};
 	applyHeaders(options, headers);
-	return sendRequest.call(this, options);
+
+	const response = await sendRequest.call(this, options);
+	if (isFailure(response)) {
+		// The body is a stream here; an error reply is short JSON, so read it.
+		throw ivantiApiError.call(this, response, parseJsonBody(await readErrorBody(response.body)));
+	}
+	return response;
+}
+
+/** Largest error reply read from a streamed body; the rest is discarded. */
+const MAX_ERROR_BODY_BYTES = 64 * 1024;
+
+/** Reads an error reply that may be a stream, a Buffer or already text. */
+async function readErrorBody(body: unknown): Promise<unknown> {
+	if (Buffer.isBuffer(body)) return body.toString('utf8');
+	if (body === null || typeof body !== 'object' || !(Symbol.asyncIterator in body)) return body;
+
+	const stream = body as AsyncIterable<Buffer | string> & { destroy?: () => void };
+	const chunks: Buffer[] = [];
+	let size = 0;
+	for await (const chunk of stream) {
+		const buffer = Buffer.isBuffer(chunk) ? chunk : Buffer.from(chunk);
+		chunks.push(buffer);
+		size += buffer.length;
+		if (size >= MAX_ERROR_BODY_BYTES) {
+			stream.destroy?.();
+			break;
+		}
+	}
+	return Buffer.concat(chunks).subarray(0, MAX_ERROR_BODY_BYTES).toString('utf8');
 }
 
 /**
@@ -407,6 +452,9 @@ async function sendRequest(
 	return this.helpers.httpRequestWithAuthentication.call(this, 'ivantiNeuronsForItsmApiKeyApi', options);
 }
 
+/** Longest reply text shown in an error message. */
+const MAX_ERROR_DETAIL_LENGTH = 500;
+
 function buildIvantiErrorMessage(statusCode: number, body: unknown): string {
 	let detail: string;
 
@@ -414,7 +462,7 @@ function buildIvantiErrorMessage(statusCode: number, body: unknown): string {
 		detail = body.trim();
 	} else if (body && typeof body === 'object') {
 		const err = body as IvantiApiError;
-		const msg = err.message ?? err.error?.message;
+		const msg = err.message ?? err.Message ?? err.error?.message ?? err.description ?? err.Description;
 		if (Array.isArray(msg)) {
 			detail = msg.join(', ');
 		} else if (typeof msg === 'string') {
@@ -426,8 +474,23 @@ function buildIvantiErrorMessage(statusCode: number, body: unknown): string {
 		detail = '';
 	}
 
-	return detail
-		? `Ivanti API request failed (HTTP ${statusCode}): ${detail}`
+	// A proxy's HTML error page can be long; the description keeps more of it.
+	if (detail.length > MAX_ERROR_DETAIL_LENGTH) {
+		detail = `${detail.slice(0, MAX_ERROR_DETAIL_LENGTH)}…`;
+	}
+	const prefix = errorPrefix(statusCode, body);
+	return detail ? `${prefix}: ${detail}` : prefix;
+}
+
+/** `Ivanti API request failed (HTTP 400, ISM_4000)`, with Ivanti's code when the reply has one. */
+function errorPrefix(statusCode: number, body: unknown): string {
+	let code: unknown;
+	if (body && typeof body === 'object' && !Array.isArray(body)) {
+		const err = body as IvantiApiError;
+		code = err.code ?? err.Code ?? err.error?.code;
+	}
+	return typeof code === 'string' && code.trim() !== ''
+		? `Ivanti API request failed (HTTP ${statusCode}, ${code.trim()})`
 		: `Ivanti API request failed (HTTP ${statusCode})`;
 }
 
@@ -454,8 +517,14 @@ export function buildBaseUrl(
 
 
 
+/** Ivanti error replies, e.g. `{ "code": "ISM_4000", "description": "...", "message": ["..."] }`. Some endpoints use PascalCase. */
 export interface IvantiApiError {
+	code?: string;
+	Code?: string;
+	description?: string;
+	Description?: string;
 	message?: string | string[];
+	Message?: string | string[];
 	error?: { code?: string; message?: string };
 }
 

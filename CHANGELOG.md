@@ -15,6 +15,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **Attachment → Read** streams the download instead of reading the whole file into memory first (#30). With n8n's binary data kept on disk or in S3, a large attachment no longer has to fit in memory
 
 ### Fixed
+- **Attachment → Read** reports Ivanti's own error, with its code and the HTTP status (for example `Ivanti API request failed (HTTP 400, ISM_4000): Attachment with ID … was not found`), instead of n8n's generic "The resource you are requesting could not be found" (#29). With Continue On Fail the item carries `httpCode`
+- Every Ivanti error message now includes Ivanti's error code when the reply has one, shows the reply in the error details, and is shortened to 500 characters of reply text (#29). **Attachment → Upload** still lists the reason of each refused file
 - **Attachment → Read** reads the file name as RFC 6266 describes (#30): UTF-8 names sent as `filename*=UTF-8''r%C3%A9sum%C3%A9.pdf` become `résumé.pdf`, and parameters after the name (`a.pdf"; size=1`) are no longer part of it
 
 ## [1.6.0] - 2026-11-04
