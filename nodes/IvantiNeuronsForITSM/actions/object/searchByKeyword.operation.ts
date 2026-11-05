@@ -92,8 +92,6 @@ export const properties: INodeProperties[] = [
                         name: 'name',
                         type: 'string',
                         default: 'Name',
-                        noDataExpression: true,
-
                     },
                 ],
             },
