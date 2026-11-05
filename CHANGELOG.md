@@ -5,6 +5,18 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [Unreleased]
+
+### Added
+- **Attachment → Read** has a **Put Output File in Field** parameter for the binary field the file is written to (#30). It defaults to `data`, the field used so far
+
+### Changed
+- **Attachment → Read** keeps the input item's binary fields and adds the file beside them, instead of replacing them (#30). A field with the same name as the output field is still replaced
+- **Attachment → Read** streams the download instead of reading the whole file into memory first (#30). With n8n's binary data kept on disk or in S3, a large attachment no longer has to fit in memory
+
+### Fixed
+- **Attachment → Read** reads the file name as RFC 6266 describes (#30): UTF-8 names sent as `filename*=UTF-8''r%C3%A9sum%C3%A9.pdf` become `résumé.pdf`, and parameters after the name (`a.pdf"; size=1`) are no longer part of it
+
 ## [1.6.0] - 2026-11-04
 
 ### Added

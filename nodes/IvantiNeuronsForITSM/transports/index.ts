@@ -356,10 +356,10 @@ export async function ivantiApiRequestBinary(
 		body,
 		url: url,
 		json: false,
-		// Return the raw bytes as a Buffer. Without this, n8n/axios auto-parses
-		// the response (e.g. a numeric-looking body becomes a number), which then
-		// fails in prepareBinaryData with "data must be of type string or Buffer".
-		encoding: 'arraybuffer',
+		// Return the body as a stream, so a large file is not held in memory and
+		// is never auto-parsed (a numeric-looking body would become a number).
+		// prepareBinaryData accepts the stream as is.
+		encoding: 'stream',
 		skipSslCertificateValidation: credential.skipSslVerification as boolean,
 		returnFullResponse: true,
 

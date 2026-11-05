@@ -10,7 +10,7 @@ import { NodeOperationError, updateDisplayOptions } from 'n8n-workflow';
 import { ivantiApiRequestBinary } from '../../transports'
 import { continueOnFailItem, itemError } from '../itemErrors';
 import { getOverrideHeaders } from '../requestOptions';
-import { assertSafeRecordId } from '../../common';
+import { assertSafeRecordId, parseContentDispositionFilename } from '../../common';
 
 
 /**
@@ -18,6 +18,7 @@ import { assertSafeRecordId } from '../../common';
  *
  * Exposes:
  * - `attachmentId` – ID of the attachment to download
+ * - `binaryPropertyName` – binary field the file is written to (default `data`)
  */
 export const properties: INodeProperties[] = [
 
@@ -30,6 +31,14 @@ export const properties: INodeProperties[] = [
         description: "The ID of the attachment to retrieve",
         default: "",
         placeholder: "",
+    },
+    {
+        displayName: 'Put Output File in Field',
+        name: 'binaryPropertyName',
+        type: 'string',
+        default: 'data',
+        required: true,
+        hint: 'The name of the output binary field to put the file in',
     },
 ]
 const displayOptions = {
@@ -44,10 +53,10 @@ export const description = updateDisplayOptions(displayOptions, properties);
 /**
  * Executes the **Attachment → Read** operation.
  *
- * Downloads a file from `GET /rest/Attachment?ID={attachmentId}` using the binary
- * transport helper and converts it to an n8n binary data item. The filename is
- * extracted from the `Content-Disposition` response header when available.
- * The original input item's JSON is preserved alongside the binary data.
+ * Streams a file from `GET /rest/Attachment?ID={attachmentId}` into n8n binary
+ * data, under the binary field named by `binaryPropertyName`. The file name is
+ * read from the `Content-Disposition` response header (RFC 6266). The input
+ * item's JSON and its other binary fields are kept.
  *
  * @throws {NodeOperationError} when `attachmentId` is empty or the API returns no response
  */
@@ -63,6 +72,10 @@ export async function execute(this: IExecuteFunctions): Promise<INodeExecutionDa
                 throw new NodeOperationError(this.getNode(), 'The "Attachment ID" parameter is required!');
             }
             assertSafeRecordId.call(this, attachmentId);
+            const binaryPropertyName = String(this.getNodeParameter('binaryPropertyName', i, 'data') ?? '').trim();
+            if (binaryPropertyName === '') {
+                throw new NodeOperationError(this.getNode(), 'The "Put Output File in Field" parameter is required', { itemIndex: i });
+            }
             const response = await ivantiApiRequestBinary.call(this, 'GET', `/rest/Attachment?ID=${encodeURIComponent(attachmentId)}`, {}, getOverrideHeaders.call(this, i));
             if (!response) {
                 throw new NodeOperationError(this.getNode(), 'No response from Ivanti API');
@@ -70,18 +83,17 @@ export async function execute(this: IExecuteFunctions): Promise<INodeExecutionDa
             const headers = response.headers;
             const contentType = headers['content-type'] as string | undefined;
             const contentDisposition = headers['content-disposition'] as string | undefined;
-            const attachmentName = contentDisposition
-                ? contentDisposition.split('filename=')[1]?.replace(/"/g, '')
-                : 'unknown';
+            const attachmentName = parseContentDispositionFilename(contentDisposition) ?? 'unknown';
             const binaryData = await this.helpers.prepareBinaryData(
                 response.body,
-                attachmentName as string,
-                contentType as string,
+                attachmentName,
+                contentType,
             );
             returnData.push({
                 json: items[i].json,
                 binary: {
-                    data: binaryData,
+                    ...items[i].binary,
+                    [binaryPropertyName]: binaryData,
                 },
                 pairedItem: { item: i },
             });

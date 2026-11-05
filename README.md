@@ -576,9 +576,18 @@ Download an attachment from a record.
 | Parameter | Type | Description |
 |-----------|------|-------------|
 | Attachment ID | string | The attachment GUID |
-| Binary Property | string | Output binary property name |
+| Put Output File in Field | string | The binary field the file is written to. Default `data` |
 
-**Output**: The file is returned in the specified binary property, ready for:
+**Output**: The input item's JSON and binary fields, with the file added in the named binary field
+(a field of the same name on the input is replaced). The file name comes from Ivanti's
+`Content-Disposition` header, including UTF-8 names such as `résumé.pdf`, and is `unknown` when
+Ivanti sends none.
+
+The file is streamed rather than read into memory first. To keep large attachments out of n8n's
+memory as well, check that n8n keeps binary data on disk or in S3 rather than in memory
+(`N8N_DEFAULT_BINARY_DATA_MODE`).
+
+The file is ready for:
 - Sending via email
 - Uploading to another system
 - Processing with other n8n nodes

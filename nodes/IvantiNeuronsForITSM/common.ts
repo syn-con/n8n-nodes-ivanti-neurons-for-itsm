@@ -292,3 +292,51 @@ export function flattenSingleValueCollection(collection: unknown): IDataObject {
 	}
 	return result;
 }
+
+/**
+ * Reads the file name from a `Content-Disposition` header, as RFC 6266 describes.
+ *
+ * - `filename*` (RFC 5987, e.g. `UTF-8''r%C3%A9sum%C3%A9.pdf`) is preferred over `filename`.
+ * - A quoted `filename` may contain `;` and backslash escapes; parameters after it are ignored.
+ * - Any directory part is removed, so a name cannot point outside the file itself.
+ *
+ * @returns The file name, or `undefined` when the header names none
+ */
+export function parseContentDispositionFilename(header: string | undefined): string | undefined {
+	if (!header) return undefined;
+
+	const parameters = new Map<string, string>();
+	// `; name=token` or `; name="quoted \" string"`. The disposition type before
+	// the first `;` is not a parameter.
+	const pattern = /;\s*([^\s=;]+)\s*=\s*(?:"((?:[^"\\]|\\.)*)"|([^;]*))/g;
+	let match: RegExpExecArray | null;
+	while ((match = pattern.exec(header)) !== null) {
+		const name = match[1].toLowerCase();
+		if (parameters.has(name)) continue;
+		parameters.set(name, match[2] !== undefined ? match[2].replace(/\\(.)/g, '$1') : match[3].trim());
+	}
+
+	const extended = parameters.get('filename*');
+	const name = (extended !== undefined ? decodeExtendedValue(extended) : undefined) ?? parameters.get('filename');
+	const baseName = name?.split(/[\\/]/).pop()?.trim();
+	return baseName ? baseName : undefined;
+}
+
+/** Decodes an RFC 5987 value, `charset'language'percent-encoded`, in UTF-8 or ISO-8859-1. */
+function decodeExtendedValue(value: string): string | undefined {
+	const match = /^([^']*)'[^']*'(.*)$/.exec(value.trim());
+	if (!match) return undefined;
+	const charset = match[1].toLowerCase();
+	if (charset === 'utf-8') {
+		try {
+			return decodeURIComponent(match[2]);
+		} catch {
+			// Malformed percent-encoding: fall back to the plain filename parameter.
+			return undefined;
+		}
+	}
+	if (charset === 'iso-8859-1') {
+		return match[2].replace(/%([0-9A-Fa-f]{2})/g, (_, hex: string) => String.fromCharCode(parseInt(hex, 16)));
+	}
+	return undefined;
+}
