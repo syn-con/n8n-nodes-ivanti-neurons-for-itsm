@@ -11,6 +11,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **Quick Action → Run** accepts a **Prompt Parameters (JSON)** array and repeatable **Add Prompt Response** rows with **Field Name** and expression-enabled **Value** fields (#46). Rows override values in a complete action-specific template while preserving hidden entries, metadata, and JSON types. Empty defaults keep the existing request unchanged. See [the prompt guide](docs/quick-action-prompts.md)
 
 ### Fixed
+- **Service Request → Create (Simplified)** uses the template's actual parameter types instead of matching words in field names, preserving text answers such as `ListName` and `ListMembers`. Supplied dropdown answers with no validation options now fail clearly before submission; unanswered optional fields are omitted (#17). See [the parameter guide](docs/service-request-parameters.md)
 - **Quick Action → Run** returns a valid empty JSON item for successful HTTP 200/204 responses without a body, preserving input-item linking without retrying the action (#46)
 
 ## [1.7.0] - 2026-11-05
