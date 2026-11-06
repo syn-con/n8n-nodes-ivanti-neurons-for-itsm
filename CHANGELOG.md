@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.7.2] - 2026-11-06
+
 ### Added
 - **Quick Action → Run** answers the prompts of a quick action (#46): **Prompt Parameters (JSON)** is the complete prompt array (`DataLayer.PromptData` entries with `FieldName` and `Value`), sent as written, as JSON text or an expression. Values from expressions keep their JSON types. Empty or `[]` leaves the request unchanged. See [the prompt guide](docs/quick-action-prompts.md)
 
