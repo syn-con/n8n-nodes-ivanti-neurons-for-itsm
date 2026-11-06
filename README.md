@@ -839,32 +839,35 @@ Execute a pre-configured saved search.
 
 ### Quick Action
 
-Execute Ivanti quick actions on records.
-
 #### Run
 
-Trigger a named quick action.
+Run an action on a record, optionally supplying its prompt answers.
 
-**Parameters**:
-| Parameter | Type | Description |
-|-----------|------|-------------|
-| Business Object | string | Target object type |
-| Record ID | string | Target record GUID |
-| Quick Action Name | string | Name of action to execute |
+| Parameter | Description |
+|-----------|-------------|
+| Business Object | Plural OData collection, for example `Incidents` |
+| Record ID | Target record ID; supports expressions such as `{{ $json.RecId }}` |
+| Quick Action | REST action name, for example `Resolve_Incident`; use the tenant's API name rather than assuming a toolbar label is callable |
+| Quick Action ID | ID of that action in the selected tenant |
+| Prompt Parameters (JSON) | Complete prompt array, including action metadata and hidden entries; accepts JSON text or an expression such as `{{ $json.promptParams }}` |
+| Prompt Responses | Optional **Add Prompt Response** rows, each with **Field Name** and expression-enabled **Value**, overriding matching entries in the JSON template |
 
-**Common Quick Actions**:
-- `Assign to Me`
-- `Take Ownership`
-- `Escalate`
-- `Resolve`
-- `Cancel`
+Configure the action's metadata template once, then add response rows such as
+`CauseCode` → `{{ $json.causeCode }}` and
+`Resolution` → `{{ $json.generatedResolution }}`. The node preserves the template's
+other fields and hidden entries. Field/value rows alone cannot identify Ivanti prompts;
+a complete template is required when using them. Leave both controls empty for
+an action without prompts.
 
-**Example**:
-```javascript
-Business Object: Incidents
-Record ID: {{ $json.RecId }}
-Quick Action Name: Assign to Me
-```
+The tested Resolve Incident action has two visible prompts but requires five REST
+entries: `ActualCategory`, `ActualService`, `Status`, `CauseCode`, and `Resolution`.
+The [prompt guide](docs/quick-action-prompts.md) includes a complete template,
+step-by-step workflow-variable mapping, validation rules, and the verified fix for
+[issue #46](https://github.com/syn-con/n8n-nodes-ivanti-neurons-for-itsm/issues/46).
+
+Values supplied by expressions retain their JSON types, including `false`, `0`, and
+`null`; literal text stays text. A successful empty response produces one linked
+`{}` output item. Read the record afterward when you need to confirm the effect.
 
 ---
 
