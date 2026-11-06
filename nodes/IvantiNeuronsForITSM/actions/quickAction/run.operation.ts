@@ -17,6 +17,7 @@ import { ivantiApiRequest } from '../../transports'
 import { continueOnFailItem, itemError } from '../itemErrors';
 import { getOverrideHeaders } from '../requestOptions';
 import { assertSafePathSegment, assertSafeRecordId, toActualObjectType, validateBusinessObject } from '../../common';
+import { getPromptParameters } from './promptParameters';
 
 
 /**
@@ -27,6 +28,8 @@ import { assertSafePathSegment, assertSafeRecordId, toActualObjectType, validate
  * - `recordId` – GUID of the record to run the action on
  * - `quickAction` – display name of the quick action (e.g. `Assign to Me`)
  * - `quickActionId` – GUID of the quick action definition
+ * - `promptParams` – complete JSON prompt entries
+ * - `promptResponses` – optional field/value overrides for those entries
  */
 export const properties: INodeProperties[] = [
 	//Business Object
@@ -69,6 +72,48 @@ export const properties: INodeProperties[] = [
 		noDataExpression: false,
 		description: 'The ID of the quick action to run. The Guid format is "07E1BD1BF5804E67B8E76B26FA6EF9A0".',
 	},
+	{
+		displayName: 'Prompt Parameters (JSON)',
+		name: 'promptParams',
+		type: 'json',
+		default: '[]',
+		description: 'Complete prompt array with FieldName, Value, action metadata, and hidden entries; Prompt Responses below can override individual values',
+		hint: 'Use {{ $json.promptParams }} for a workflow array. Set up the template once, then map answers below. Empty means no prompts',
+	},
+	{
+		displayName: 'Prompt Responses',
+		name: 'promptResponses',
+		type: 'fixedCollection',
+		placeholder: 'Add Prompt Response',
+		default: {},
+		typeOptions: { multipleValues: true },
+		description: 'Optional value overrides for matching FieldName entries in Prompt Parameters; all other metadata and hidden entries are preserved',
+		options: [
+			{
+				displayName: 'Response',
+				name: 'responses',
+				values: [
+					{
+						displayName: 'Field Name',
+						name: 'fieldName',
+						type: 'string',
+						default: '',
+						placeholder: 'e.g. Resolution',
+						description: 'Exact Ivanti FieldName of the prompt, not its display label',
+					},
+					{
+						displayName: 'Value',
+						name: 'value',
+						type: 'string',
+						default: '',
+						ignoreValidationDuringExecution: true,
+						placeholder: 'e.g. {{ $json.resolution }}',
+						description: 'Answer to supply as literal text or an expression for workflow data, numbers, booleans, or null',
+					},
+				],
+			},
+		],
+	},
 ]
 const displayOptions = {
 	show: {
@@ -108,6 +153,8 @@ export async function execute(this: IExecuteFunctions): Promise<INodeExecutionDa
 			assertSafeRecordId.call(this, recordId);
 
 			const baseUrl = `/odata/businessobject/${businessObject}('${encodeURIComponent(recordId)}')/${quickAction}`;
+			const objectType = toActualObjectType(businessObject);
+			const prompts = getPromptParameters.call(this, i);
 
 			const quickActionPayload = {
 				ActionId: quickActionId,
@@ -117,13 +164,16 @@ export async function execute(this: IExecuteFunctions): Promise<INodeExecutionDa
 					FormParams: {
 						actionId: quickActionId,
 						objectId: recordId,
-						actualObjectType: toActualObjectType(businessObject),
+						actualObjectType: objectType,
 					}
 				},
-				promptParams: null
+				...(prompts.length === 0 ? { promptParams: null } : { PromptParams: prompts }),
 			}
 			const response = await ivantiApiRequest.call(this, 'POST', baseUrl, {}, quickActionPayload, getOverrideHeaders.call(this, i));
-			const responseData = response as IDataObject;
+			// A successful REST Quick Action can return HTTP 200/204 with no body.
+			const responseData = response == null || (typeof response === 'string' && response.trim() === '')
+				? {}
+				: response as IDataObject;
 			const executionData = this.helpers.constructExecutionMetaData(
 				this.helpers.returnJsonArray(responseData),
 				{ itemData: { item: i } },
