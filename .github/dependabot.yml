@@ -1,0 +1,42 @@
+# Dependabot version updates.
+# https://docs.github.com/code-security/dependabot/working-with-dependabot/dependabot-options-reference
+version: 2
+updates:
+  # npm dev dependencies (the package has no runtime dependencies).
+  - package-ecosystem: npm
+    directory: /
+    schedule:
+      interval: weekly
+      day: monday
+    open-pull-requests-limit: 5
+    commit-message:
+      prefix: deps
+    groups:
+      # The n8n toolchain moves together: node-cli brings the lint rules
+      # n8n uses in its verification review, n8n-workflow the node types.
+      n8n:
+        patterns:
+          - "@n8n/*"
+          - "n8n-workflow"
+      dev-tools:
+        patterns:
+          - "*"
+        exclude-patterns:
+          - "@n8n/*"
+          - "n8n-workflow"
+        update-types:
+          - minor
+          - patch
+
+  # Actions used in .github/workflows (checkout, setup-node).
+  - package-ecosystem: github-actions
+    directory: /
+    schedule:
+      interval: weekly
+      day: monday
+    commit-message:
+      prefix: ci
+    groups:
+      actions:
+        patterns:
+          - "*"
