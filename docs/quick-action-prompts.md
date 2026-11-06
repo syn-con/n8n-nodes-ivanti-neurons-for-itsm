@@ -2,15 +2,19 @@
 
 Some quick actions ask questions before they run, for example the cause code and
 resolution of Resolve Incident. Over REST the answers are sent as `PromptParams`.
-**Quick Action → Run** sends them in one of two **Prompt Mode**s.
+In **Quick Action → Run** they go in **Prompt Parameters (JSON)**.
 
-Without prompts (no rows in Manual mode, or blank or `[]` in JSON mode) the node
-sends `promptParams: null`, as it always did.
+Blank or `[]` means no prompts, and the node sends `promptParams: null`, as it
+always did.
 
-## Manual mode (default)
+## Prompt Parameters (JSON)
 
-Click **Add Prompt** and set **Field Name** and **Value**. For each input item the
-node sends one entry per row, for that item's record:
+The complete prompt array, sent as written: array order, hidden entries, metadata
+and value types are kept. Every entry needs a `FieldName` and a `Value` (`null` is
+allowed). Write it as JSON text, or switch the field to Expression to fill in values
+from the input, or pass a whole array with `{{ $json.promptParams }}`.
+
+A simple entry for the record the action runs on:
 
 ```json
 {
@@ -26,22 +30,8 @@ node sends one entry per row, for that item's record:
 }
 ```
 
-- `PromptObjectId` is the **Record ID** of the item.
-- `ActionObjectType` and `PromptObjectType` come from **Business Object**
-  (`Incidents` → `Incident#`, `Tasks` → `Task#`).
-- **Field Name** is the Ivanti `FieldName`, not the label on the form: `Resolution`,
-  not `Resolution Details`. Each field name may appear once.
-
-Manual mode adds no action metadata. Some actions need it on their visible prompts;
-for those, use JSON mode.
-
-## JSON mode
-
-**Prompt Parameters (JSON)** is the complete prompt array, sent as written: array
-order, hidden entries, metadata and value types are kept. Every entry needs a
-`FieldName` and a `Value` (`null` is allowed). Write it as JSON text, or switch the
-field to Expression to fill in values from the input, or pass a whole array with
-`{{ $json.promptParams }}`.
+`FieldName` is the Ivanti field name, not the label on the form: `Resolution`, not
+`Resolution Details`.
 
 ### Resolve Incident example
 
@@ -108,10 +98,10 @@ In an AI Agent tool, a value can be `{{ $fromAI('resolution', 'Resolution text f
 
 ## Validation and output
 
-- An item is refused before its request when JSON mode gets invalid JSON, something
+- An item is refused before its request when it gets invalid JSON, something
   other than an array, an entry without `FieldName` or `Value`, or a value JSON
-  cannot carry (undefined, a non-finite number, circular data). Manual mode refuses
-  an empty or repeated Field Name. The error names the entry or row, not its answer.
+  cannot carry (undefined, a non-finite number, circular data). The error names the
+  entry, not its answer.
 - Header overrides, API-key authentication, error reporting and Continue On Fail
   work as in the other operations. The action is never retried.
 - A successful empty answer (HTTP 200 or 204) returns `{}`. Read the record afterward

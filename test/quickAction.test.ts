@@ -2,7 +2,7 @@
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import { describe, it } from 'node:test';
-import { NodeHelpers, NodeOperationError, Workflow, type IDataObject, type INode, type INodePropertyCollection } from 'n8n-workflow';
+import { NodeHelpers, NodeOperationError, Workflow, type IDataObject, type INode } from 'n8n-workflow';
 
 import { IvantiNeuronsForItsm } from '../nodes/IvantiNeuronsForITSM/IvantiNeuronsForItsm.node';
 import { description, execute } from '../nodes/IvantiNeuronsForITSM/actions/quickAction/run.operation';
@@ -18,73 +18,9 @@ const legacyBody = {
 	promptParams: null,
 };
 
-/** JSON mode unless the test sets another Prompt Mode. */
 function context(extra: Record<string, unknown> = {}, options: FakeContextOptions = {}) {
-	return fakeExecuteContext({ responses: [{ statusCode: 200, body: '' }], ...options, parameters: { ...parameters, promptMode: 'json', ...extra } });
+	return fakeExecuteContext({ responses: [{ statusCode: 200, body: '' }], ...options, parameters: { ...parameters, ...extra } });
 }
-
-describe('Quick Action prompts in Manual mode', () => {
-	const manual = (rows: unknown, extra: Record<string, unknown> = {}, options: FakeContextOptions = {}) =>
-		context({ promptMode: 'manual', 'manualPrompts.prompt': rows, ...extra }, options);
-
-	it('keeps the legacy body without prompt rows, also when Prompt Mode is not saved', async () => {
-		for (const ctxOf of [manual([]), fakeExecuteContext({ responses: [{ statusCode: 200, body: '' }], parameters })]) {
-			await execute.call(ctxOf.ctx);
-			assert.deepEqual(ctxOf.requests[0].body, legacyBody);
-		}
-	});
-
-	it('builds one PromptData entry per row for the record', async () => {
-		const { ctx, requests } = manual([{ fieldName: ' Status ', value: 'Closed' }, { fieldName: 'Resolution', value: '' }]);
-		await execute.call(ctx);
-		const expected: IDataObject = {
-			...legacyBody,
-			PromptParams: [
-				{
-					__type: 'DataLayer.PromptData', ActionId: null, ActionObjectId: null, PromptObjectId: recordId,
-					ActionObjectType: 'Incident#', PromptObjectType: 'Incident#', Value: 'Closed', FieldName: 'Status', IsNewPrompt: true,
-				},
-				{
-					__type: 'DataLayer.PromptData', ActionId: null, ActionObjectId: null, PromptObjectId: recordId,
-					ActionObjectType: 'Incident#', PromptObjectType: 'Incident#', Value: '', FieldName: 'Resolution', IsNewPrompt: true,
-				},
-			],
-		};
-		delete expected.promptParams;
-		assert.deepEqual(requests[0].body, expected);
-	});
-
-	it('uses each item record and object type, and keeps value types', async () => {
-		const { ctx, requests } = manual(
-			(i: number) => [{ fieldName: 'Flag', value: i === 0 ? false : 0 }],
-			{ businessObject: 'Tasks', recordId: (i: number) => String(i).repeat(32) },
-			{ items: 2, responses: [{ statusCode: 200, body: '' }, { statusCode: 200, body: '' }] },
-		);
-		const output = await execute.call(ctx);
-		for (let i = 0; i < 2; i++) {
-			const [prompt] = (requests[i].body as IDataObject).PromptParams as IDataObject[];
-			assert.equal(prompt.PromptObjectId, String(i).repeat(32));
-			assert.equal(prompt.PromptObjectType, 'Task#');
-			assert.equal(prompt.ActionObjectType, 'Task#');
-			assert.equal(prompt.Value, i === 0 ? false : 0);
-			assert.deepEqual(output[i].pairedItem, { item: i });
-		}
-	});
-
-	it('ignores the JSON mode fields', async () => {
-		const { ctx, requests } = manual([], { promptParams: [{ FieldName: 'Status', Value: 'x' }] });
-		await execute.call(ctx);
-		assert.deepEqual(requests[0].body, legacyBody);
-	});
-
-	for (const rows of [null, [null], [{}], [{ fieldName: ' ', value: 'x' }], [{ fieldName: 'Status', value: NaN }], [{ fieldName: 'Status', value: 'a' }, { fieldName: 'status', value: 'b' }]]) {
-		it(`refuses invalid prompt rows ${JSON.stringify(rows)} before sending`, async () => {
-			const { ctx, requests } = manual(rows);
-			await assert.rejects(execute.call(ctx), NodeOperationError);
-			assert.equal(requests.length, 0);
-		});
-	}
-});
 
 describe('Quick Action prompt requests', () => {
 	it('keeps the complete legacy body when saved workflows have no new parameters', async () => {
@@ -123,7 +59,7 @@ describe('Quick Action prompt requests', () => {
 		});
 	}
 
-	it('retains repeated field names with different sub-action metadata in JSON mode', async () => {
+	it('retains repeated field names with different sub-action metadata', async () => {
 		const prompts = [{ FieldName: 'Note', Value: 'first', ActionId: 'child-1' }, { FieldName: 'Note', Value: 'second', ActionId: 'child-2' }];
 		const { ctx, requests } = context({ promptParams: prompts });
 		await execute.call(ctx);
@@ -159,12 +95,6 @@ describe('Quick Action prompt requests', () => {
 });
 
 describe('Quick Action prompt validation', () => {
-	it('refuses an unknown Prompt Mode before sending', async () => {
-		const { ctx, requests } = context({ promptMode: 'other' });
-		await assert.rejects(execute.call(ctx), /Unknown Prompt Mode: other/);
-		assert.equal(requests.length, 0);
-	});
-
 	const circular: Record<string, unknown> = {};
 	circular.self = circular;
 	const badJson: Array<[string, unknown, RegExp]> = [
@@ -278,43 +208,26 @@ describe('Quick Action prompt editor and tool properties', () => {
 		});
 		const values = ['generated text', false, 0, null, ''];
 		const items = values.map((answer) => ({ json: { answer } }));
-		for (const promptMode of ['manual', 'json']) {
-			const evaluate = (i: number) => workflow.expression.getParameterValue(
-				promptMode === 'manual'
-					? [{ fieldName: 'Resolution', value: '={{ $json.answer }}' }]
-					: '={{ [{ FieldName: "Resolution", Value: $json.answer }] }}',
-				null, 0, i, node.name, items, 'manual', {},
-			);
-			const { ctx, requests } = context({ promptMode, [promptMode === 'manual' ? 'manualPrompts.prompt' : 'promptParams']: evaluate }, {
-				inputItems: items, responses: values.map(() => ({ statusCode: 200, body: '' })),
-			});
-			await execute.call(ctx);
-			assert.deepEqual(requests.map((request) => ((request.body as IDataObject).PromptParams as IDataObject[])[0].Value), values, promptMode);
-		}
-	});
-
-	it('shows each prompt control only for Quick Action Run in its mode', () => {
-		const shown = (name: string, resource: string, operation: string, promptMode: string) => NodeHelpers.displayParameter(
-			{ resource, operation, promptMode }, description.find((p) => p.name === name)!, { typeVersion: 1.3 }, null,
+		const evaluate = (i: number) => workflow.expression.getParameterValue(
+			'={{ [{ FieldName: "Resolution", Value: $json.answer }] }}', null, 0, i, node.name, items, 'manual', {},
 		);
-		assert.equal(description.some((p) => p.name === 'promptResponses'), false);
-		for (const [name, mode, other] of [['promptParams', 'json', 'manual'], ['manualPrompts', 'manual', 'json'], ['promptMode', 'manual', null]] as const) {
-			assert.equal(shown(name, 'quickAction', 'run', mode), true, name);
-			if (other) assert.equal(shown(name, 'quickAction', 'run', other), false, name);
-			assert.equal(shown(name, 'businessobject', 'create', mode), false, name);
-			assert.equal(shown(name, 'quickAction', 'other', mode), false, name);
-		}
-		assert.equal(description.find((p) => p.name === 'promptMode')!.default, 'manual');
+		const { ctx, requests } = context({ promptParams: evaluate }, {
+			inputItems: items, responses: values.map(() => ({ statusCode: 200, body: '' })),
+		});
+		await execute.call(ctx);
+		assert.deepEqual(requests.map((request) => ((request.body as IDataObject).PromptParams as IDataObject[])[0].Value), values);
 	});
 
-	it('offers Add Prompt with exactly two expression-enabled fields', () => {
-		const collection = description.find((p) => p.name === 'manualPrompts')!;
-		assert.equal(collection.placeholder, 'Add Prompt');
-		assert.equal(collection.typeOptions?.multipleValues, true);
-		const fields = (collection.options![0] as INodePropertyCollection).values;
-		assert.deepEqual(fields.map((p) => p.name), ['fieldName', 'value']);
-		for (const field of fields) assert.notEqual(field.noDataExpression, true);
-		assert.equal(fields[1].ignoreValidationDuringExecution, true);
+	it('has only the JSON prompt control, shown only for Quick Action Run', () => {
+		const shown = (resource: string, operation: string) => NodeHelpers.displayParameter(
+			{ resource, operation }, description.find((p) => p.name === 'promptParams')!, { typeVersion: 1.3 }, null,
+		);
+		for (const name of ['promptMode', 'manualPrompts', 'promptResponses']) {
+			assert.equal(description.some((p) => p.name === name), false, name);
+		}
+		assert.equal(shown('quickAction', 'run'), true);
+		assert.equal(shown('businessobject', 'create'), false);
+		assert.equal(shown('quickAction', 'other'), false);
 		assert.notEqual(description.find((p) => p.name === 'promptParams')!.noDataExpression, true);
 		assert.equal(new IvantiNeuronsForItsm().description.usableAsTool, true);
 	});

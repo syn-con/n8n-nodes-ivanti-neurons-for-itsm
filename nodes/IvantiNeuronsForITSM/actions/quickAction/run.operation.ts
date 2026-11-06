@@ -28,9 +28,7 @@ import { getPromptParameters } from './promptParameters';
  * - `recordId` – GUID of the record to run the action on
  * - `quickAction` – display name of the quick action (e.g. `Assign to Me`)
  * - `quickActionId` – GUID of the quick action definition
- * - `promptMode` – Manual (field/value rows) or JSON (complete prompt array)
- * - `manualPrompts` – Manual: field/value rows, each built into a PromptData entry
- * - `promptParams` – JSON: complete prompt entries
+ * - `promptParams` – complete JSON prompt entries, sent as written
  */
 export const properties: INodeProperties[] = [
 	//Business Object
@@ -74,66 +72,10 @@ export const properties: INodeProperties[] = [
 		description: 'The ID of the quick action to run. The Guid format is "07E1BD1BF5804E67B8E76B26FA6EF9A0".',
 	},
 	{
-		displayName: 'Prompt Mode',
-		name: 'promptMode',
-		type: 'options',
-		noDataExpression: true,
-		default: 'manual',
-		options: [
-			{
-				name: 'Manual',
-				value: 'manual',
-				description: 'Add a Field Name and Value per prompt; the node builds each prompt entry for the record',
-			},
-			{
-				name: 'JSON',
-				value: 'json',
-				description: 'Write the complete prompt array, for actions whose prompts need action metadata or hidden entries',
-			},
-		],
-		description: 'How the answers to the quick action prompts are given',
-	},
-	{
-		displayName: 'Prompts',
-		name: 'manualPrompts',
-		type: 'fixedCollection',
-		placeholder: 'Add Prompt',
-		default: {},
-		typeOptions: { multipleValues: true },
-		description: 'Answers to the quick action prompts. Each one is sent as a DataLayer.PromptData entry for this record. Leave empty when the action has no prompts',
-		displayOptions: { show: { promptMode: ['manual'] } },
-		options: [
-			{
-				displayName: 'Prompt',
-				name: 'prompt',
-				values: [
-					{
-						displayName: 'Field Name',
-						name: 'fieldName',
-						type: 'string',
-						default: '',
-						placeholder: 'e.g. Status',
-						description: 'Exact Ivanti FieldName of the prompt, not its display label',
-					},
-					{
-						displayName: 'Value',
-						name: 'value',
-						type: 'string',
-						default: '',
-						ignoreValidationDuringExecution: true,
-						placeholder: 'e.g. Closed',
-						description: 'Answer to supply as literal text or an expression for workflow data, numbers, booleans, or null',
-					},
-				],
-			},
-		],
-	},
-	{
 		displayName: 'Prompt Parameters (JSON)',
 		name: 'promptParams',
 		type: 'json',
 		default: '[]',
-		displayOptions: { show: { promptMode: ['json'] } },
 		description: 'Complete prompt array with FieldName, Value, action metadata, and hidden entries, sent as written',
 		hint: 'Use {{ $json.promptParams }} for a workflow array, or switch to Expression to fill in values. Empty means no prompts',
 	},
@@ -177,7 +119,7 @@ export async function execute(this: IExecuteFunctions): Promise<INodeExecutionDa
 
 			const baseUrl = `/odata/businessobject/${businessObject}('${encodeURIComponent(recordId)}')/${quickAction}`;
 			const objectType = toActualObjectType(businessObject);
-			const prompts = getPromptParameters.call(this, i, { recordId, objectType });
+			const prompts = getPromptParameters.call(this, i);
 
 			const quickActionPayload = {
 				ActionId: quickActionId,
