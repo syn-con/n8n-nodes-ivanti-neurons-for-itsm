@@ -18,9 +18,73 @@ const legacyBody = {
 	promptParams: null,
 };
 
+/** JSON mode unless the test sets another Prompt Mode. */
 function context(extra: Record<string, unknown> = {}, options: FakeContextOptions = {}) {
-	return fakeExecuteContext({ responses: [{ statusCode: 200, body: '' }], ...options, parameters: { ...parameters, ...extra } });
+	return fakeExecuteContext({ responses: [{ statusCode: 200, body: '' }], ...options, parameters: { ...parameters, promptMode: 'json', ...extra } });
 }
+
+describe('Quick Action prompts in Manual mode', () => {
+	const manual = (rows: unknown, extra: Record<string, unknown> = {}, options: FakeContextOptions = {}) =>
+		context({ promptMode: 'manual', 'manualPrompts.prompt': rows, ...extra }, options);
+
+	it('keeps the legacy body without prompt rows, also when Prompt Mode is not saved', async () => {
+		for (const ctxOf of [manual([]), fakeExecuteContext({ responses: [{ statusCode: 200, body: '' }], parameters })]) {
+			await execute.call(ctxOf.ctx);
+			assert.deepEqual(ctxOf.requests[0].body, legacyBody);
+		}
+	});
+
+	it('builds one PromptData entry per row for the record', async () => {
+		const { ctx, requests } = manual([{ fieldName: ' Status ', value: 'Closed' }, { fieldName: 'Resolution', value: '' }]);
+		await execute.call(ctx);
+		const expected: IDataObject = {
+			...legacyBody,
+			PromptParams: [
+				{
+					__type: 'DataLayer.PromptData', ActionId: null, ActionObjectId: null, PromptObjectId: recordId,
+					ActionObjectType: 'Incident#', PromptObjectType: 'Incident#', Value: 'Closed', FieldName: 'Status', IsNewPrompt: true,
+				},
+				{
+					__type: 'DataLayer.PromptData', ActionId: null, ActionObjectId: null, PromptObjectId: recordId,
+					ActionObjectType: 'Incident#', PromptObjectType: 'Incident#', Value: '', FieldName: 'Resolution', IsNewPrompt: true,
+				},
+			],
+		};
+		delete expected.promptParams;
+		assert.deepEqual(requests[0].body, expected);
+	});
+
+	it('uses each item record and object type, and keeps value types', async () => {
+		const { ctx, requests } = manual(
+			(i: number) => [{ fieldName: 'Flag', value: i === 0 ? false : 0 }],
+			{ businessObject: 'Tasks', recordId: (i: number) => String(i).repeat(32) },
+			{ items: 2, responses: [{ statusCode: 200, body: '' }, { statusCode: 200, body: '' }] },
+		);
+		const output = await execute.call(ctx);
+		for (let i = 0; i < 2; i++) {
+			const [prompt] = (requests[i].body as IDataObject).PromptParams as IDataObject[];
+			assert.equal(prompt.PromptObjectId, String(i).repeat(32));
+			assert.equal(prompt.PromptObjectType, 'Task#');
+			assert.equal(prompt.ActionObjectType, 'Task#');
+			assert.equal(prompt.Value, i === 0 ? false : 0);
+			assert.deepEqual(output[i].pairedItem, { item: i });
+		}
+	});
+
+	it('ignores the JSON mode fields', async () => {
+		const { ctx, requests } = manual([], { promptParams: [{ FieldName: 'Status', Value: 'x' }] });
+		await execute.call(ctx);
+		assert.deepEqual(requests[0].body, legacyBody);
+	});
+
+	for (const rows of [null, [null], [{}], [{ fieldName: ' ', value: 'x' }], [{ fieldName: 'Status', value: NaN }], [{ fieldName: 'Status', value: 'a' }, { fieldName: 'status', value: 'b' }]]) {
+		it(`refuses invalid prompt rows ${JSON.stringify(rows)} before sending`, async () => {
+			const { ctx, requests } = manual(rows);
+			await assert.rejects(execute.call(ctx), NodeOperationError);
+			assert.equal(requests.length, 0);
+		});
+	}
+});
 
 describe('Quick Action prompt requests', () => {
 	it('keeps the complete legacy body when saved workflows have no new parameters', async () => {
@@ -66,59 +130,23 @@ describe('Quick Action prompt requests', () => {
 		assert.deepEqual((requests[0].body as IDataObject).PromptParams, prompts);
 	});
 
-	it('maps two visible answers while preserving all five entries and their metadata', async () => {
-		const prompts = [
-			{ FieldName: 'ActualCategory', Value: 'How-To', Hidden: true, ActionId: null },
-			{ FieldName: 'ActualService', Value: 'Service Desk', Hidden: true, ActionId: null },
-			{ FieldName: 'Status', Value: 'Resolved', Hidden: true, ActionId: null },
-			{ FieldName: 'CauseCode', Value: null, Hidden: false, ActionId: actionId, ValidList: 'Incident Cause Code' },
-			{ FieldName: 'Resolution', Value: null, Hidden: false, ActionId: actionId, CustomMetadata: { keep: true } },
-		];
-		const snapshot = JSON.stringify(prompts);
-		const rows = [
-			{ fieldName: 'CauseCode', value: 'Documentation Request' },
-			{ fieldName: 'Resolution', value: 'Generated answer — "quotes"\nand another line' },
-		];
-		const { ctx, requests } = context({ promptParams: prompts, 'promptResponses.responses': rows });
-		await execute.call(ctx);
-		assert.deepEqual((requests[0].body as IDataObject).PromptParams, [
-			...prompts.slice(0, 3),
-			{ ...prompts[3], Value: rows[0].value },
-			{ ...prompts[4], Value: rows[1].value },
-		]);
-		assert.equal(JSON.stringify(prompts), snapshot, 'template must not be mutated');
-	});
-
-	it('preserves false, zero, null and empty string in field response expressions', async () => {
-		const values = [false, 0, null, '', 'null', 'false', '0'];
-		const { ctx, requests } = context({ promptParams: values.map((_, i) => ({ FieldName: `Field${i}`, Value: 'previous' })), 'promptResponses.responses': values.map((value, i) => ({ fieldName: ` Field${i} `, value })) });
-		await execute.call(ctx);
-		const prompts = (requests[0].body as IDataObject).PromptParams as IDataObject[];
-		assert.deepEqual(prompts.map((p) => p.Value), values);
-		assert.deepEqual(prompts.map((p) => p.FieldName), values.map((_, i) => `Field${i}`));
-	});
-
-	it('reads responses and record identity separately for each input item', async () => {
-		for (const useOverrides of [true, false]) {
-			const { ctx, requests } = context({
-				recordId: (i: number) => String(i).repeat(32),
-				promptParams: (i: number) => [{ FieldName: 'Resolution', Value: useOverrides ? null : `answer-${i}` }],
-				'promptResponses.responses': (i: number) => useOverrides ? [{ fieldName: 'Resolution', value: `answer-${i}` }] : [],
-			}, { items: 2, responses: [{ statusCode: 200, body: '' }, { statusCode: 200, body: '' }] });
-			const output = await execute.call(ctx);
-			for (let i = 0; i < 2; i++) {
-				assert.equal(((requests[i].body as IDataObject).PromptParams as IDataObject[])[0].Value, `answer-${i}`);
-				assert.match(requests[i].url, new RegExp(String(i).repeat(32)));
-				assert.deepEqual(output[i].pairedItem, { item: i });
-			}
+	it('reads the prompts and record identity separately for each input item', async () => {
+		const { ctx, requests } = context({
+			recordId: (i: number) => String(i).repeat(32),
+			promptParams: (i: number) => [{ FieldName: 'Resolution', Value: `answer-${i}` }],
+		}, { items: 2, responses: [{ statusCode: 200, body: '' }, { statusCode: 200, body: '' }] });
+		const output = await execute.call(ctx);
+		for (let i = 0; i < 2; i++) {
+			assert.equal(((requests[i].body as IDataObject).PromptParams as IDataObject[])[0].Value, `answer-${i}`);
+			assert.match(requests[i].url, new RegExp(String(i).repeat(32)));
+			assert.deepEqual(output[i].pairedItem, { item: i });
 		}
 	});
 
 	it('uses the shared object-type conversion and per-item header overrides', async () => {
 		const { ctx, requests } = context({
 			businessObject: 'Tasks',
-			promptParams: [{ FieldName: 'Status', Value: null }],
-			'promptResponses.responses': [{ fieldName: 'Status', value: 'Completed' }],
+			promptParams: [{ FieldName: 'Status', Value: 'Completed' }],
 			'requestOptions.overrideHeaders.header': [{ name: 'Authorization', value: 'test-override' }],
 		}, { isOnPrem: true });
 		await execute.call(ctx);
@@ -131,22 +159,10 @@ describe('Quick Action prompt requests', () => {
 });
 
 describe('Quick Action prompt validation', () => {
-	it('requires metadata for response rows instead of guessing prompt identity', async () => {
-		const { ctx, requests } = context({ 'promptResponses.responses': [{ fieldName: 'Resolution', value: 'answer' }] });
-		await assert.rejects(execute.call(ctx), /require a Prompt Parameters JSON template/);
+	it('refuses an unknown Prompt Mode before sending', async () => {
+		const { ctx, requests } = context({ promptMode: 'other' });
+		await assert.rejects(execute.call(ctx), /Unknown Prompt Mode: other/);
 		assert.equal(requests.length, 0);
-	});
-
-	it('rejects unmatched and ambiguous field overrides before sending', async () => {
-		for (const prompts of [
-			[{ FieldName: 'OtherField', Value: null }],
-			[{ FieldName: 'resolution', Value: null }],
-			[{ FieldName: 'Resolution', Value: null, ActionId: 'child-1' }, { FieldName: 'Resolution', Value: null, ActionId: 'child-2' }],
-		]) {
-			const { ctx, requests } = context({ promptParams: prompts, 'promptResponses.responses': [{ fieldName: 'Resolution', value: 'answer' }] });
-			await assert.rejects(execute.call(ctx), /no matching FieldName|matches multiple prompt entries/);
-			assert.equal(requests.length, 0);
-		}
 	});
 
 	const circular: Record<string, unknown> = {};
@@ -179,14 +195,6 @@ describe('Quick Action prompt validation', () => {
 				assert.equal(error.context.itemIndex, 0);
 				return true;
 			});
-			assert.equal(requests.length, 0);
-		});
-	}
-
-	for (const rows of [null, {}, [null], [{}], [{ fieldName: 'Resolution' }], [{ fieldName: 'Resolution', value: undefined }], [{ fieldName: 'Resolution', value: Infinity }], [{ fieldName: 'Resolution', value: '' }, { fieldName: ' resolution ', value: '' }]]) {
-		it(`refuses invalid response rows ${JSON.stringify(rows)}`, async () => {
-			const { ctx, requests } = context({ promptParams: [{ FieldName: 'Resolution', Value: null }], 'promptResponses.responses': rows });
-			await assert.rejects(execute.call(ctx), NodeOperationError);
 			assert.equal(requests.length, 0);
 		});
 	}
@@ -236,8 +244,8 @@ describe('Quick Action output', () => {
 });
 
 describe('Quick Action prompt editor and tool properties', () => {
-	it('runs the documented template and two response expressions through n8n', async () => {
-		const example = readFileSync('docs/quick-action-prompts.md', 'utf8').match(/```javascript\n([\s\S]*?)\n```/);
+	it('runs the documented JSON template through n8n', async () => {
+		const example = readFileSync('docs/quick-action-prompts.md', 'utf8').match(/```javascript\r?\n([\s\S]*?)\r?\n```/);
 		assert.ok(example);
 		const node: INode = {
 			id: 'resolve', name: 'Resolve', type: 'ivanti', typeVersion: 1.3, position: [0, 0],
@@ -250,11 +258,7 @@ describe('Quick Action prompt editor and tool properties', () => {
 		});
 		const items = [{ json: { RecId: recordId, Category: 'How-To', Service: 'Service Desk', causeCode: 'Documentation Request', generatedResolution: 'Generated answer' } }];
 		const template = workflow.expression.getParameterValue('=' + example[1], null, 0, 0, node.name, items, 'manual', {});
-		const rows = workflow.expression.getParameterValue([
-			{ fieldName: 'CauseCode', value: '={{ $json.causeCode }}' },
-			{ fieldName: 'Resolution', value: '={{ $json.generatedResolution }}' },
-		], null, 0, 0, node.name, items, 'manual', {});
-		const { ctx, requests } = context({ promptParams: template, 'promptResponses.responses': rows });
+		const { ctx, requests } = context({ promptParams: template });
 		await execute.call(ctx);
 		const prompts = (requests[0].body as IDataObject).PromptParams as IDataObject[];
 		assert.deepEqual(prompts.map((p) => [p.FieldName, p.Value]), [
@@ -274,35 +278,38 @@ describe('Quick Action prompt editor and tool properties', () => {
 		});
 		const values = ['generated text', false, 0, null, ''];
 		const items = values.map((answer) => ({ json: { answer } }));
-		for (const useOverrides of [true, false]) {
+		for (const promptMode of ['manual', 'json']) {
 			const evaluate = (i: number) => workflow.expression.getParameterValue(
-				useOverrides
+				promptMode === 'manual'
 					? [{ fieldName: 'Resolution', value: '={{ $json.answer }}' }]
 					: '={{ [{ FieldName: "Resolution", Value: $json.answer }] }}',
 				null, 0, i, node.name, items, 'manual', {},
 			);
-			const { ctx, requests } = context({ promptParams: useOverrides ? [{ FieldName: 'Resolution', Value: 'previous' }] : evaluate, 'promptResponses.responses': useOverrides ? evaluate : [] }, {
+			const { ctx, requests } = context({ promptMode, [promptMode === 'manual' ? 'manualPrompts.prompt' : 'promptParams']: evaluate }, {
 				inputItems: items, responses: values.map(() => ({ statusCode: 200, body: '' })),
 			});
 			await execute.call(ctx);
-			assert.deepEqual(requests.map((request) => ((request.body as IDataObject).PromptParams as IDataObject[])[0].Value), values);
+			assert.deepEqual(requests.map((request) => ((request.body as IDataObject).PromptParams as IDataObject[])[0].Value), values, promptMode);
 		}
 	});
 
-	it('shows both prompt controls only for Quick Action Run', () => {
-		const shown = (name: string, resource: string, operation: string) => NodeHelpers.displayParameter(
-			{ resource, operation }, description.find((p) => p.name === name)!, { typeVersion: 1.3 }, null,
+	it('shows each prompt control only for Quick Action Run in its mode', () => {
+		const shown = (name: string, resource: string, operation: string, promptMode: string) => NodeHelpers.displayParameter(
+			{ resource, operation, promptMode }, description.find((p) => p.name === name)!, { typeVersion: 1.3 }, null,
 		);
-		for (const name of ['promptResponses', 'promptParams']) {
-			assert.equal(shown(name, 'quickAction', 'run'), true);
-			assert.equal(shown(name, 'businessobject', 'create'), false);
-			assert.equal(shown(name, 'quickAction', 'other'), false);
+		assert.equal(description.some((p) => p.name === 'promptResponses'), false);
+		for (const [name, mode, other] of [['promptParams', 'json', 'manual'], ['manualPrompts', 'manual', 'json'], ['promptMode', 'manual', null]] as const) {
+			assert.equal(shown(name, 'quickAction', 'run', mode), true, name);
+			if (other) assert.equal(shown(name, 'quickAction', 'run', other), false, name);
+			assert.equal(shown(name, 'businessobject', 'create', mode), false, name);
+			assert.equal(shown(name, 'quickAction', 'other', mode), false, name);
 		}
+		assert.equal(description.find((p) => p.name === 'promptMode')!.default, 'manual');
 	});
 
-	it('offers Add Prompt Response with exactly two expression-enabled fields', () => {
-		const collection = description.find((p) => p.name === 'promptResponses')!;
-		assert.equal(collection.placeholder, 'Add Prompt Response');
+	it('offers Add Prompt with exactly two expression-enabled fields', () => {
+		const collection = description.find((p) => p.name === 'manualPrompts')!;
+		assert.equal(collection.placeholder, 'Add Prompt');
 		assert.equal(collection.typeOptions?.multipleValues, true);
 		const fields = (collection.options![0] as INodePropertyCollection).values;
 		assert.deepEqual(fields.map((p) => p.name), ['fieldName', 'value']);

@@ -8,7 +8,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Added
-- **Quick Action → Run** accepts a **Prompt Parameters (JSON)** array and repeatable **Add Prompt Response** rows with **Field Name** and expression-enabled **Value** fields (#46). Rows override values in a complete action-specific template while preserving hidden entries, metadata, and JSON types. Empty defaults keep the existing request unchanged. See [the prompt guide](docs/quick-action-prompts.md)
+- **Quick Action → Run** answers the prompts of a quick action (#46), with a **Prompt Mode**: **Manual** (default) or **JSON**. In Manual mode, **Add Prompt** rows with **Field Name** and **Value** are each sent as a `DataLayer.PromptData` entry for the item's record (`PromptObjectId` is the Record ID, `ActionObjectType` and `PromptObjectType` come from the Business Object, e.g. `Incident#`). In JSON mode, **Prompt Parameters (JSON)** is the complete prompt array, sent as written, for actions that need action metadata or hidden entries. Values from expressions keep their JSON types. With no prompts the request is unchanged. See [the prompt guide](docs/quick-action-prompts.md)
 
 ### Fixed
 - **Quick Action → Run** returns a valid empty JSON item for successful HTTP 200/204 responses without a body, preserving input-item linking without retrying the action (#46)

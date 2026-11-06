@@ -21,7 +21,7 @@ function fail(this: IExecuteFunctions, message: string, itemIndex: number): neve
 	throw new NodeOperationError(this.getNode(), message, { itemIndex });
 }
 
-/** Preserve the complete REST prompt metadata, including hidden/sub-action entries. */
+/** JSON mode: the complete REST prompt array, kept as written (hidden and sub-action entries included). */
 function parsePromptParameters(this: IExecuteFunctions, raw: unknown, itemIndex: number): IDataObject[] {
 	if (raw === undefined || (typeof raw === 'string' && raw.trim() === '')) return [];
 	let parsed: unknown = raw;
@@ -51,43 +51,63 @@ function parsePromptParameters(this: IExecuteFunctions, raw: unknown, itemIndex:
 	});
 }
 
-/** Read one item's responses; the empty default leaves the existing request unchanged. */
-export function getPromptParameters(
-	this: IExecuteFunctions,
-	itemIndex: number,
-): IDataObject[] {
-	const prompts = parsePromptParameters.call(this, this.getNodeParameter('promptParams', itemIndex, '[]'), itemIndex);
-	const rows: unknown = this.getNodeParameter('promptResponses.responses', itemIndex, []);
-	if (!Array.isArray(rows)) return fail.call(this, 'Prompt Responses must contain a list of responses', itemIndex);
-	if (rows.length === 0) return prompts;
-	if (prompts.length === 0) {
-		return fail.call(this, 'Prompt Responses require a Prompt Parameters JSON template containing the action metadata and all hidden entries', itemIndex);
-	}
+/** The record the prompts answer for, used to build the Manual mode entries. */
+export interface PromptTarget {
+	/** RecId of the record the quick action runs on */
+	recordId: string;
+	/** Ivanti object type of that record, e.g. `Incident#` */
+	objectType: string;
+}
+
+/**
+ * Manual mode: builds one `DataLayer.PromptData` entry per Field Name / Value row,
+ * pointing at the record the action runs on. No rows means no prompts.
+ */
+function buildManualPrompts(this: IExecuteFunctions, itemIndex: number, target: PromptTarget): IDataObject[] {
+	const rows: unknown = this.getNodeParameter('manualPrompts.prompt', itemIndex, []);
+	if (!Array.isArray(rows)) return fail.call(this, 'Prompts must contain a list of prompts', itemIndex);
 
 	const seen = new Set<string>();
-	const result = [...prompts];
-	for (const [index, row] of Array.from(rows).entries()) {
-		const label = `Prompt response ${index + 1}`;
+	return Array.from(rows, (row: unknown, index) => {
+		const label = `Prompt ${index + 1}`;
 		if (!isObject(row) || typeof row.fieldName !== 'string' || row.fieldName.trim() === '') {
 			return fail.call(this, `${label} must have a non-empty Field Name`, itemIndex);
 		}
 		const fieldName = row.fieldName.trim();
 		if (seen.has(fieldName.toLowerCase())) {
-			return fail.call(this, `${label} repeats a Field Name; supply each response once`, itemIndex);
+			return fail.call(this, `${label} repeats a Field Name; supply each prompt once`, itemIndex);
 		}
 		seen.add(fieldName.toLowerCase());
-		if (!Object.prototype.hasOwnProperty.call(row, 'value') || !isJsonValue(row.value)) {
+		const value = Object.prototype.hasOwnProperty.call(row, 'value') ? row.value : '';
+		if (!isJsonValue(value)) {
 			return fail.call(this, `${label} must have a JSON-compatible Value (null is allowed)`, itemIndex);
 		}
-		const matches = prompts.flatMap((prompt, promptIndex) => prompt.FieldName === fieldName ? [promptIndex] : []);
-		if (matches.length === 0) {
-			return fail.call(this, `${label} has no matching FieldName in Prompt Parameters; field names are case-sensitive`, itemIndex);
-		}
-		if (matches.length > 1) {
-			return fail.call(this, `${label} matches multiple prompt entries; set their Value directly in JSON to preserve sub-action identity`, itemIndex);
-		}
-		// Only Value changes; preserve identity, hidden values, and unknown metadata.
-		result[matches[0]] = { ...prompts[matches[0]], Value: row.value } as IDataObject;
-	}
-	return result;
+		return {
+			__type: 'DataLayer.PromptData',
+			ActionId: null,
+			ActionObjectId: null,
+			PromptObjectId: target.recordId,
+			ActionObjectType: target.objectType,
+			PromptObjectType: target.objectType,
+			Value: value,
+			FieldName: fieldName,
+			IsNewPrompt: true,
+		} as IDataObject;
+	});
+}
+
+/**
+ * Reads one item's prompts in the selected mode. Manual builds the entries from
+ * the rows; JSON takes the complete array as written. The empty defaults leave
+ * the existing request unchanged.
+ */
+export function getPromptParameters(
+	this: IExecuteFunctions,
+	itemIndex: number,
+	target: PromptTarget,
+): IDataObject[] {
+	const mode = this.getNodeParameter('promptMode', itemIndex, 'manual') as string;
+	if (mode === 'manual') return buildManualPrompts.call(this, itemIndex, target);
+	if (mode !== 'json') return fail.call(this, `Unknown Prompt Mode: ${mode}`, itemIndex);
+	return parsePromptParameters.call(this, this.getNodeParameter('promptParams', itemIndex, '[]'), itemIndex);
 }
