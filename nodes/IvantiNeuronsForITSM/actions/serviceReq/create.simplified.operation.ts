@@ -8,13 +8,15 @@ import {
 } from 'n8n-workflow';
 
 import { updateDisplayOptions } from 'n8n-workflow';
-import { ivantiApiRequest } from '../../transports';
+import { ivantiApiRequest, ivantiApiRequestAllItems } from '../../transports';
 import { continueOnFailItem, itemError } from '../itemErrors';
 import { getOverrideHeaders } from '../requestOptions';
-import { serviceReqTemplateRLC, SearchResponse, escapeODataString, parseJsonObjectParameter, flattenSingleValueCollection } from '../../common';
+import { serviceReqTemplateRLC, SearchResponse, escapeODataString, parseJsonObjectParameter, flattenSingleValueCollection, assertSafeRecordId } from '../../common';
 const serviceReqParamsUrl = "/rest/ServiceRequest/";
+const templateParamsUrl = '/odata/businessobject/ServiceReqTemplateParams';
 const subscriptionUrl = "/rest/Template";
 const employeeUrl = "/odata/businessobject/Employees";
+type ValidationListRow = [recId: string, displayValue: string, alternateValue?: string];
 export const properties: INodeProperties[] = [
 
 	serviceReqTemplateRLC,
@@ -264,26 +266,28 @@ function buildRequestBody(
  * In `json` mode, returns the raw JSON parameter directly.
  * In `manual` mode:
  * - Validates required fields against the resourceMapper schema.
- * - For dropdown/picklist/list/combo fields (identified by the display name suffix),
+ * - Reads actual DisplayType metadata so saved mapper labels cannot misclassify fields.
+ * - For dropdown/picklist/list/combo fields,
  *   fetches the `ValidationList` and resolves the text value to its RecId, producing
  *   both a `par-{id}` (display value) and a `par-{id}-recId` (RecId) entry.
  * - Maps all other fields to `par-{id}`.
  *
- * `validationListCache` is keyed by `templateRecId` and maps each parameter ID to its
- * `ValidationList` response, eliminating repeated API calls when multiple items share
- * the same template.
+ * Metadata and validation lists are cached per template and override headers for
+ * this execution. Optional unanswered fields need neither lookup nor submission.
  *
  * @param itemIndex         - Index of the currently processed input item
  * @param mode              - `'manual'` or `'json'`
  * @param templateRecId     - RecId of the service request template (cache namespace)
- * @param validationListCache - Two-level cache: templateRecId → parameterId → ValidationList
+ * @param validationListCache - Template/headers → parameterId → ValidationList
+ * @param parameterTypesCache - Template/headers → lowercase parameterId → DisplayType
  */
 async function resolveParameters(
 	this: IExecuteFunctions,
 	itemIndex: number,
 	mode: string,
 	templateRecId: string,
-	validationListCache: Map<string, Map<string, IDataObject[][]>>,
+	validationListCache: Map<string, Map<string, ValidationListRow[]>>,
+	parameterTypesCache: Map<string, Map<string, string>>,
 ): Promise<IDataObject> {
 	if (mode === 'json') {
 		return parseJsonObjectParameter.call(
@@ -295,13 +299,19 @@ async function resolveParameters(
 	}
 
 	const parameters = this.getNodeParameter('parameters', itemIndex, {}) as IDataObject;
-	const parametersValue = parameters.value as IDataObject;
-	const schema = parameters.schema as IDataObject[];
-
-	if (!validationListCache.has(templateRecId)) {
-		validationListCache.set(templateRecId, new Map());
+	const parametersValue = (parameters.value ?? {}) as IDataObject;
+	if (!Array.isArray(parameters.schema)) {
+		throw new NodeOperationError(this.getNode(), 'The parameter schema is missing. Refresh the Parameters fields.');
 	}
-	const templateValidationCache = validationListCache.get(templateRecId)!;
+	const schema = parameters.schema as IDataObject[];
+	const headers = getOverrideHeaders.call(this, itemIndex);
+	const cacheKey = JSON.stringify([templateRecId, headers]);
+	let parameterTypes = parameterTypesCache.get(cacheKey);
+
+	if (!validationListCache.has(cacheKey)) {
+		validationListCache.set(cacheKey, new Map());
+	}
+	const templateValidationCache = validationListCache.get(cacheKey)!;
 
 	const result: IDataObject = {};
 
@@ -312,19 +322,48 @@ async function resolveParameters(
 		if (field.required === true && (value === undefined || value === null)) {
 			throw new NodeOperationError(this.getNode(), `The parameter '${field.displayName}' is required`);
 		}
+		if (value === undefined || value === null) continue;
 
-		const displayName = field.displayName as string;
-		const isDropdown = ['Dropdown', 'Picklist', 'List', 'Combo'].some(t => displayName.includes(t));
+		if (parameterTypes === undefined) {
+			const metadata = await ivantiApiRequestAllItems.call(this, 'GET', templateParamsUrl, {
+				$filter: `ParentLink_RecID eq ${escapeODataString(templateRecId)}`,
+				$select: 'RecId,DisplayType',
+			}, undefined, headers);
+			parameterTypes = new Map(metadata.map(parameter => [
+				String(parameter.RecId).toLowerCase(),
+				typeof parameter.DisplayType === 'string' ? parameter.DisplayType.toLowerCase() : '',
+			]));
+			parameterTypesCache.set(cacheKey, parameterTypes);
+		}
+
+		const displayType = parameterTypes.get(id.toLowerCase());
+		if (!displayType) {
+			throw new NodeOperationError(this.getNode(), `Could not determine the type of parameter '${field.displayName}'`, {
+				description: 'Refresh the Parameters fields and check that this parameter belongs to the selected template.',
+			});
+		}
+		const isDropdown = ['dropdown', 'picklist', 'list', 'combo'].some(type => displayType.includes(type));
 
 		if (isDropdown) {
+			if (value === '') {
+				if (field.required === true) {
+					throw new NodeOperationError(this.getNode(), `The parameter '${field.displayName}' is required`);
+				}
+				continue;
+			}
+			assertSafeRecordId.call(this, id);
 			let validationList = templateValidationCache.get(id);
 			if (validationList === undefined) {
-				validationList = await ivantiApiRequest.call(
-					this, 'GET', `${serviceReqParamsUrl}${id}/ValidationList`, {}, {}, getOverrideHeaders.call(this, itemIndex),
-				) as IDataObject[][];
-				templateValidationCache.set(id, validationList ?? []);
+				validationList = (await ivantiApiRequest.call(
+					this, 'GET', `${serviceReqParamsUrl}${id}/ValidationList`, {}, {}, headers,
+				) ?? []) as ValidationListRow[];
+				templateValidationCache.set(id, validationList);
 			}
-			if (!validationList?.length) continue;
+			if (!validationList.length) {
+				throw new NodeOperationError(this.getNode(), `No validation options were returned for parameter '${field.displayName}'`, {
+					description: 'The supplied answer cannot be resolved to a RecId. Check the template validation list and any dependent-field constraints, or use JSON mode with a valid display value and RecId pair.',
+				});
+			}
 
 			// ValidationList rows: [RecId, displayValue, altValue?]
 			const match = validationList.find(row => row[1] === value || row[2] === value);
@@ -332,7 +371,7 @@ async function resolveParameters(
 				throw new NodeOperationError(this.getNode(), `The value '${value}' is not valid for parameter '${field.displayName}'`);
 			}
 			result[`par-${id}`] = value as string;
-			result[`par-${id}-recId`] = match[0] as unknown as string;
+			result[`par-${id}-recId`] = match[0];
 		} else {
 			result[`par-${id}`] = value;
 		}
@@ -363,8 +402,9 @@ export async function execute(this: IExecuteFunctions): Promise<INodeExecutionDa
 	const employeeRecIdCache = new Map<string, string>();
 	// loginId → all subscriptions for that employee
 	const subscriptionCache = new Map<string, IDataObject[]>();
-	// templateRecId → (parameterId → ValidationList rows)
-	const validationListCache = new Map<string, Map<string, IDataObject[][]>>();
+	// templateRecId + override headers → (parameterId → validation rows / display type)
+	const validationListCache = new Map<string, Map<string, ValidationListRow[]>>();
+	const parameterTypesCache = new Map<string, Map<string, string>>();
 
 	for (let i = 0; i < items.length; i++) {
 		try {
@@ -378,7 +418,7 @@ export async function execute(this: IExecuteFunctions): Promise<INodeExecutionDa
 			const subscriptionId = await resolveSubscriptionId.call(this, loginId, employeeRecId, serviceReqTemplateId, subscriptionCache, headers);
 
 			const body = buildRequestBody(employeeRecId, subscriptionId, optionalParameters);
-			body.parameters = await resolveParameters.call(this, i, mode, serviceReqTemplateId, validationListCache);
+			body.parameters = await resolveParameters.call(this, i, mode, serviceReqTemplateId, validationListCache, parameterTypesCache);
 
 			const response = await ivantiApiRequest.call(this, 'POST', '/rest/ServiceRequest/new', {}, body, headers);
 			if (!response) continue;
