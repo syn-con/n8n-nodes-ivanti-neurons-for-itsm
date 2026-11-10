@@ -1,0 +1,78 @@
+# Creates a GitHub Release for every version tag push (e.g. 1.7.2), with the
+# notes taken from that version's section in CHANGELOG.md and the package
+# tarball (.tgz, built with npm pack) attached as an asset.
+#
+# Publishing to npm is done separately by publish.yml on the same tag.
+# Run it by hand (Actions → Release → Run workflow) to create the release of an
+# existing tag that has none.
+
+name: Release
+
+on:
+  push:
+    tags:
+      # Same filter as publish.yml: 1.2.3, 2.0.0-rc.1, etc.
+      - '*.*.*'
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: 'Existing version tag, e.g. 1.7.2'
+        required: true
+
+permissions:
+  # Required to create the release.
+  contents: write
+
+jobs:
+  release:
+    name: Create GitHub Release
+    runs-on: ubuntu-latest
+    env:
+      TAG: ${{ inputs.tag || github.ref_name }}
+      GH_TOKEN: ${{ github.token }}
+
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          ref: ${{ env.TAG }}
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v6
+        with:
+          # Same pin as publish.yml (isolated-vm does not compile on Node 26).
+          node-version: '24'
+          cache: 'npm'
+
+      - name: Build the package tarball
+        run: |
+          npm ci
+          npm run build
+          echo "TGZ=$(npm pack --silent | tail -n 1)" >> "$GITHUB_ENV"
+
+      - name: Read the release notes from CHANGELOG.md
+        # Takes the lines between "## [<tag>]" and the next "## [" heading.
+        run: |
+          awk -v tag="$TAG" '
+            index($0, "## [" tag "]") == 1 { found = 1; next }
+            found && /^## \[/ { exit }
+            found { print }
+          ' CHANGELOG.md | sed 's/\r$//' > notes.md
+          if ! grep -q '[^[:space:]]' notes.md; then
+            echo "::error::CHANGELOG.md has no section for $TAG"
+            exit 1
+          fi
+          printf '\n**npm:** [%s@%s](https://www.npmjs.com/package/%s/v/%s)\n' \
+            "$(node -p "require('./package.json').name")" "$TAG" \
+            "$(node -p "require('./package.json').name")" "$TAG" >> notes.md
+          cat notes.md
+
+      - name: Create or update the release
+        run: |
+          prerelease=""
+          case "$TAG" in *-*) prerelease="--prerelease" ;; esac
+          if gh release view "$TAG" > /dev/null 2>&1; then
+            gh release edit "$TAG" --title "$TAG" --notes-file notes.md
+            gh release upload "$TAG" "$TGZ" --clobber
+          else
+            gh release create "$TAG" "$TGZ" --verify-tag --title "$TAG" --notes-file notes.md $prerelease
+          fi
