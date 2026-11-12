@@ -5,6 +5,12 @@ import { NodeApiError, NodeOperationError } from 'n8n-workflow';
  * Builds the output item for an input item that failed while Continue On Fail
  * is on. It is paired to the input item, so later nodes can still use
  * `$('Node').item`, and carries the HTTP status code when Ivanti answered.
+ *
+ * The n8n error is also set as the item's `error`. With On Error set to
+ * "Continue (using error output)", n8n sends an item to the error output when it
+ * has an `error`, or when its json holds only `error`, `message` and `details`;
+ * `httpCode` falls outside that list, so without it the item went to the
+ * success output (#63).
  */
 export function continueOnFailItem(error: unknown, itemIndex: number): INodeExecutionData {
 	const json: IDataObject = {
@@ -13,7 +19,11 @@ export function continueOnFailItem(error: unknown, itemIndex: number): INodeExec
 	if (error instanceof NodeApiError && error.httpCode) {
 		json.httpCode = error.httpCode;
 	}
-	return { json, pairedItem: { item: itemIndex } };
+	const item: INodeExecutionData = { json, pairedItem: { item: itemIndex } };
+	if (error instanceof NodeApiError || error instanceof NodeOperationError) {
+		item.error = error;
+	}
+	return item;
 }
 
 /**

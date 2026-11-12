@@ -113,6 +113,8 @@ editing it.
   3. Update `README.md` when parameters or behaviour change.
   4. Commit to `main`, create the tag, and push both the branch and the tag.
 - Pushing the tag runs `.github/workflows/publish.yml`, which publishes to npm
-  with a provenance attestation (required by n8n). **Never run `npm publish`
+  with a provenance attestation (required by n8n).
+  The same tag runs `.github/workflows/release.yml`, which creates the GitHub
+  Release with that version's CHANGELOG section as its notes. **Never run `npm publish`
   locally.** Check the result with `gh run list --workflow publish.yml` and
   `npm view @synergyconsulting/n8n-nodes-ivanti-neurons-for-itsm@<version> --prefer-online`.

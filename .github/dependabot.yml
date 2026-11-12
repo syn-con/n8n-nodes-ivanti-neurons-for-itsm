@@ -1,4 +1,4 @@
-# Dependabot version updates.
+# Dependabot: one pull request per ecosystem, once a week.
 # https://docs.github.com/code-security/dependabot/working-with-dependabot/dependabot-options-reference
 version: 2
 updates:
@@ -8,25 +8,20 @@ updates:
     schedule:
       interval: weekly
       day: monday
-    open-pull-requests-limit: 5
+    open-pull-requests-limit: 2
     commit-message:
       prefix: deps
     groups:
-      # The n8n toolchain moves together: node-cli brings the lint rules
-      # n8n uses in its verification review, n8n-workflow the node types.
-      n8n:
-        patterns:
-          - "@n8n/*"
-          - "n8n-workflow"
-      dev-tools:
+      # Every version update, majors included, in one weekly pull request.
+      npm:
+        applies-to: version-updates
         patterns:
           - "*"
-        exclude-patterns:
-          - "@n8n/*"
-          - "n8n-workflow"
-        update-types:
-          - minor
-          - patch
+      # Every security fix (also of indirect dependencies) in one pull request.
+      npm-security:
+        applies-to: security-updates
+        patterns:
+          - "*"
 
   # Actions used in .github/workflows (checkout, setup-node).
   - package-ecosystem: github-actions
@@ -34,6 +29,7 @@ updates:
     schedule:
       interval: weekly
       day: monday
+    open-pull-requests-limit: 1
     commit-message:
       prefix: ci
     groups:

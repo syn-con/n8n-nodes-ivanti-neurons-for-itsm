@@ -11,7 +11,7 @@ import {
 
 
 
-import { updateDisplayOptions } from 'n8n-workflow';
+import { NodeApiError, NodeOperationError, updateDisplayOptions } from 'n8n-workflow';
 
 import { ivantiApiRequest } from '../../transports'
 import { continueOnFailItem, itemError } from '../itemErrors';
@@ -28,8 +28,7 @@ import { getPromptParameters } from './promptParameters';
  * - `recordId` – GUID of the record to run the action on
  * - `quickAction` – display name of the quick action (e.g. `Assign to Me`)
  * - `quickActionId` – GUID of the quick action definition
- * - `promptParams` – complete JSON prompt entries
- * - `promptResponses` – optional field/value overrides for those entries
+ * - `promptParams` – complete JSON prompt entries, sent as written
  */
 export const properties: INodeProperties[] = [
 	//Business Object
@@ -77,42 +76,15 @@ export const properties: INodeProperties[] = [
 		name: 'promptParams',
 		type: 'json',
 		default: '[]',
-		description: 'Complete prompt array with FieldName, Value, action metadata, and hidden entries; Prompt Responses below can override individual values',
-		hint: 'Use {{ $json.promptParams }} for a workflow array. Set up the template once, then map answers below. Empty means no prompts',
+		description: 'Complete prompt array with FieldName, Value, action metadata, and hidden entries, sent as written',
+		hint: 'Use {{ $json.promptParams }} for a workflow array, or switch to Expression to fill in values. Empty means no prompts',
 	},
 	{
-		displayName: 'Prompt Responses',
-		name: 'promptResponses',
-		type: 'fixedCollection',
-		placeholder: 'Add Prompt Response',
-		default: {},
-		typeOptions: { multipleValues: true },
-		description: 'Optional value overrides for matching FieldName entries in Prompt Parameters; all other metadata and hidden entries are preserved',
-		options: [
-			{
-				displayName: 'Response',
-				name: 'responses',
-				values: [
-					{
-						displayName: 'Field Name',
-						name: 'fieldName',
-						type: 'string',
-						default: '',
-						placeholder: 'e.g. Resolution',
-						description: 'Exact Ivanti FieldName of the prompt, not its display label',
-					},
-					{
-						displayName: 'Value',
-						name: 'value',
-						type: 'string',
-						default: '',
-						ignoreValidationDuringExecution: true,
-						placeholder: 'e.g. {{ $json.resolution }}',
-						description: 'Answer to supply as literal text or an expression for workflow data, numbers, booleans, or null',
-					},
-				],
-			},
-		],
+		displayName: 'Return Record',
+		name: 'returnRecord',
+		type: 'boolean',
+		default: false,
+		description: 'Whether to read the record after the action ran and output it, instead of the empty reply of the action',
 	},
 ]
 const displayOptions = {
@@ -123,6 +95,49 @@ const displayOptions = {
 };
 
 export const description = updateDisplayOptions(displayOptions, properties);
+
+/** The message of a refusal that carries no reason, e.g. `Ivanti API request failed (HTTP 500, ISM_5000)`. */
+const REFUSAL_WITHOUT_REASON = /^Ivanti API request failed \(HTTP 5\d\d(, [^)]*)?\)$/;
+
+/**
+ * Ivanti refuses an action, e.g. for an invalid prompt value, with HTTP 500
+ * `ISM_5000` and an empty message. Says which action and business object were
+ * refused, and that Ivanti gave no reason; any other error is returned as is.
+ */
+function explainEmptyRefusal(error: unknown, quickAction: string, businessObject: string): unknown {
+	if (error instanceof NodeApiError && REFUSAL_WITHOUT_REASON.test(error.message)) {
+		error.message = `${error.message}: Ivanti refused the quick action "${quickAction}" on ${businessObject} without saying why. Check the prompt values and that the action applies to this record`;
+	}
+	return error;
+}
+
+/**
+ * Return Record: reads the record after the action ran. A failure here is
+ * reported as such, because the action itself has already run.
+ */
+async function readRecordAfterAction(
+	this: IExecuteFunctions,
+	businessObject: string,
+	recordId: string,
+	quickAction: string,
+	headers: IDataObject,
+): Promise<IDataObject> {
+	try {
+		const record = await ivantiApiRequest.call(
+			this, 'GET', `/odata/businessobject/${businessObject}('${encodeURIComponent(recordId)}')`, {}, undefined, headers,
+		);
+		const data: IDataObject = record && typeof record === 'object' ? { ...(record as IDataObject) } : {};
+		delete data['@odata.context'];
+		return data;
+	} catch (error) {
+		const reason = error instanceof Error ? error.message : String(error);
+		if (error instanceof NodeApiError) {
+			error.message = `The quick action "${quickAction}" ran, but reading the record afterwards failed: ${reason}`;
+			throw error;
+		}
+		throw new NodeOperationError(this.getNode(), `The quick action "${quickAction}" ran, but reading the record afterwards failed: ${reason}`);
+	}
+}
 
 /**
  * Executes the **Quick Action → Run** operation.
@@ -169,11 +184,21 @@ export async function execute(this: IExecuteFunctions): Promise<INodeExecutionDa
 				},
 				...(prompts.length === 0 ? { promptParams: null } : { PromptParams: prompts }),
 			}
-			const response = await ivantiApiRequest.call(this, 'POST', baseUrl, {}, quickActionPayload, getOverrideHeaders.call(this, i));
+			const headers = getOverrideHeaders.call(this, i);
+			let response: unknown;
+			try {
+				response = await ivantiApiRequest.call(this, 'POST', baseUrl, {}, quickActionPayload, headers);
+			} catch (error) {
+				throw explainEmptyRefusal(error, quickAction, businessObject);
+			}
 			// A successful REST Quick Action can return HTTP 200/204 with no body.
-			const responseData = response == null || (typeof response === 'string' && response.trim() === '')
+			let responseData = response == null || (typeof response === 'string' && response.trim() === '')
 				? {}
 				: response as IDataObject;
+
+			if (this.getNodeParameter('returnRecord', i, false) as boolean) {
+				responseData = await readRecordAfterAction.call(this, businessObject, recordId, quickAction, headers);
+			}
 			const executionData = this.helpers.constructExecutionMetaData(
 				this.helpers.returnJsonArray(responseData),
 				{ itemData: { item: i } },

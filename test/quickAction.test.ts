@@ -2,7 +2,7 @@
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import { describe, it } from 'node:test';
-import { NodeHelpers, NodeOperationError, Workflow, type IDataObject, type INode, type INodePropertyCollection } from 'n8n-workflow';
+import { NodeHelpers, NodeOperationError, Workflow, type IDataObject, type INode } from 'n8n-workflow';
 
 import { IvantiNeuronsForItsm } from '../nodes/IvantiNeuronsForITSM/IvantiNeuronsForItsm.node';
 import { description, execute } from '../nodes/IvantiNeuronsForITSM/actions/quickAction/run.operation';
@@ -59,66 +59,30 @@ describe('Quick Action prompt requests', () => {
 		});
 	}
 
-	it('retains repeated field names with different sub-action metadata in JSON mode', async () => {
+	it('retains repeated field names with different sub-action metadata', async () => {
 		const prompts = [{ FieldName: 'Note', Value: 'first', ActionId: 'child-1' }, { FieldName: 'Note', Value: 'second', ActionId: 'child-2' }];
 		const { ctx, requests } = context({ promptParams: prompts });
 		await execute.call(ctx);
 		assert.deepEqual((requests[0].body as IDataObject).PromptParams, prompts);
 	});
 
-	it('maps two visible answers while preserving all five entries and their metadata', async () => {
-		const prompts = [
-			{ FieldName: 'ActualCategory', Value: 'How-To', Hidden: true, ActionId: null },
-			{ FieldName: 'ActualService', Value: 'Service Desk', Hidden: true, ActionId: null },
-			{ FieldName: 'Status', Value: 'Resolved', Hidden: true, ActionId: null },
-			{ FieldName: 'CauseCode', Value: null, Hidden: false, ActionId: actionId, ValidList: 'Incident Cause Code' },
-			{ FieldName: 'Resolution', Value: null, Hidden: false, ActionId: actionId, CustomMetadata: { keep: true } },
-		];
-		const snapshot = JSON.stringify(prompts);
-		const rows = [
-			{ fieldName: 'CauseCode', value: 'Documentation Request' },
-			{ fieldName: 'Resolution', value: 'Generated answer — "quotes"\nand another line' },
-		];
-		const { ctx, requests } = context({ promptParams: prompts, 'promptResponses.responses': rows });
-		await execute.call(ctx);
-		assert.deepEqual((requests[0].body as IDataObject).PromptParams, [
-			...prompts.slice(0, 3),
-			{ ...prompts[3], Value: rows[0].value },
-			{ ...prompts[4], Value: rows[1].value },
-		]);
-		assert.equal(JSON.stringify(prompts), snapshot, 'template must not be mutated');
-	});
-
-	it('preserves false, zero, null and empty string in field response expressions', async () => {
-		const values = [false, 0, null, '', 'null', 'false', '0'];
-		const { ctx, requests } = context({ promptParams: values.map((_, i) => ({ FieldName: `Field${i}`, Value: 'previous' })), 'promptResponses.responses': values.map((value, i) => ({ fieldName: ` Field${i} `, value })) });
-		await execute.call(ctx);
-		const prompts = (requests[0].body as IDataObject).PromptParams as IDataObject[];
-		assert.deepEqual(prompts.map((p) => p.Value), values);
-		assert.deepEqual(prompts.map((p) => p.FieldName), values.map((_, i) => `Field${i}`));
-	});
-
-	it('reads responses and record identity separately for each input item', async () => {
-		for (const useOverrides of [true, false]) {
-			const { ctx, requests } = context({
-				recordId: (i: number) => String(i).repeat(32),
-				promptParams: (i: number) => [{ FieldName: 'Resolution', Value: useOverrides ? null : `answer-${i}` }],
-				'promptResponses.responses': (i: number) => useOverrides ? [{ fieldName: 'Resolution', value: `answer-${i}` }] : [],
-			}, { items: 2, responses: [{ statusCode: 200, body: '' }, { statusCode: 200, body: '' }] });
-			const output = await execute.call(ctx);
-			for (let i = 0; i < 2; i++) {
-				assert.equal(((requests[i].body as IDataObject).PromptParams as IDataObject[])[0].Value, `answer-${i}`);
-				assert.match(requests[i].url, new RegExp(String(i).repeat(32)));
-				assert.deepEqual(output[i].pairedItem, { item: i });
-			}
+	it('reads the prompts and record identity separately for each input item', async () => {
+		const { ctx, requests } = context({
+			recordId: (i: number) => String(i).repeat(32),
+			promptParams: (i: number) => [{ FieldName: 'Resolution', Value: `answer-${i}` }],
+		}, { items: 2, responses: [{ statusCode: 200, body: '' }, { statusCode: 200, body: '' }] });
+		const output = await execute.call(ctx);
+		for (let i = 0; i < 2; i++) {
+			assert.equal(((requests[i].body as IDataObject).PromptParams as IDataObject[])[0].Value, `answer-${i}`);
+			assert.match(requests[i].url, new RegExp(String(i).repeat(32)));
+			assert.deepEqual(output[i].pairedItem, { item: i });
 		}
 	});
 
 	it('uses the shared object-type conversion and per-item header overrides', async () => {
 		const { ctx, requests } = context({
 			businessObject: 'Tasks',
-			promptParams: [{ FieldName: 'Status', Value: null }],
-			'promptResponses.responses': [{ fieldName: 'Status', value: 'Completed' }],
+			promptParams: [{ FieldName: 'Status', Value: 'Completed' }],
 			'requestOptions.overrideHeaders.header': [{ name: 'Authorization', value: 'test-override' }],
 		}, { isOnPrem: true });
 		await execute.call(ctx);
@@ -131,24 +95,6 @@ describe('Quick Action prompt requests', () => {
 });
 
 describe('Quick Action prompt validation', () => {
-	it('requires metadata for response rows instead of guessing prompt identity', async () => {
-		const { ctx, requests } = context({ 'promptResponses.responses': [{ fieldName: 'Resolution', value: 'answer' }] });
-		await assert.rejects(execute.call(ctx), /require a Prompt Parameters JSON template/);
-		assert.equal(requests.length, 0);
-	});
-
-	it('rejects unmatched and ambiguous field overrides before sending', async () => {
-		for (const prompts of [
-			[{ FieldName: 'OtherField', Value: null }],
-			[{ FieldName: 'resolution', Value: null }],
-			[{ FieldName: 'Resolution', Value: null, ActionId: 'child-1' }, { FieldName: 'Resolution', Value: null, ActionId: 'child-2' }],
-		]) {
-			const { ctx, requests } = context({ promptParams: prompts, 'promptResponses.responses': [{ fieldName: 'Resolution', value: 'answer' }] });
-			await assert.rejects(execute.call(ctx), /no matching FieldName|matches multiple prompt entries/);
-			assert.equal(requests.length, 0);
-		}
-	});
-
 	const circular: Record<string, unknown> = {};
 	circular.self = circular;
 	const badJson: Array<[string, unknown, RegExp]> = [
@@ -179,14 +125,6 @@ describe('Quick Action prompt validation', () => {
 				assert.equal(error.context.itemIndex, 0);
 				return true;
 			});
-			assert.equal(requests.length, 0);
-		});
-	}
-
-	for (const rows of [null, {}, [null], [{}], [{ fieldName: 'Resolution' }], [{ fieldName: 'Resolution', value: undefined }], [{ fieldName: 'Resolution', value: Infinity }], [{ fieldName: 'Resolution', value: '' }, { fieldName: ' resolution ', value: '' }]]) {
-		it(`refuses invalid response rows ${JSON.stringify(rows)}`, async () => {
-			const { ctx, requests } = context({ promptParams: [{ FieldName: 'Resolution', Value: null }], 'promptResponses.responses': rows });
-			await assert.rejects(execute.call(ctx), NodeOperationError);
 			assert.equal(requests.length, 0);
 		});
 	}
@@ -236,8 +174,8 @@ describe('Quick Action output', () => {
 });
 
 describe('Quick Action prompt editor and tool properties', () => {
-	it('runs the documented template and two response expressions through n8n', async () => {
-		const example = readFileSync('docs/quick-action-prompts.md', 'utf8').match(/```javascript\n([\s\S]*?)\n```/);
+	it('runs the documented JSON template through n8n', async () => {
+		const example = readFileSync('docs/quick-action-prompts.md', 'utf8').match(/```javascript\r?\n([\s\S]*?)\r?\n```/);
 		assert.ok(example);
 		const node: INode = {
 			id: 'resolve', name: 'Resolve', type: 'ivanti', typeVersion: 1.3, position: [0, 0],
@@ -250,11 +188,7 @@ describe('Quick Action prompt editor and tool properties', () => {
 		});
 		const items = [{ json: { RecId: recordId, Category: 'How-To', Service: 'Service Desk', causeCode: 'Documentation Request', generatedResolution: 'Generated answer' } }];
 		const template = workflow.expression.getParameterValue('=' + example[1], null, 0, 0, node.name, items, 'manual', {});
-		const rows = workflow.expression.getParameterValue([
-			{ fieldName: 'CauseCode', value: '={{ $json.causeCode }}' },
-			{ fieldName: 'Resolution', value: '={{ $json.generatedResolution }}' },
-		], null, 0, 0, node.name, items, 'manual', {});
-		const { ctx, requests } = context({ promptParams: template, 'promptResponses.responses': rows });
+		const { ctx, requests } = context({ promptParams: template });
 		await execute.call(ctx);
 		const prompts = (requests[0].body as IDataObject).PromptParams as IDataObject[];
 		assert.deepEqual(prompts.map((p) => [p.FieldName, p.Value]), [
@@ -274,41 +208,90 @@ describe('Quick Action prompt editor and tool properties', () => {
 		});
 		const values = ['generated text', false, 0, null, ''];
 		const items = values.map((answer) => ({ json: { answer } }));
-		for (const useOverrides of [true, false]) {
-			const evaluate = (i: number) => workflow.expression.getParameterValue(
-				useOverrides
-					? [{ fieldName: 'Resolution', value: '={{ $json.answer }}' }]
-					: '={{ [{ FieldName: "Resolution", Value: $json.answer }] }}',
-				null, 0, i, node.name, items, 'manual', {},
-			);
-			const { ctx, requests } = context({ promptParams: useOverrides ? [{ FieldName: 'Resolution', Value: 'previous' }] : evaluate, 'promptResponses.responses': useOverrides ? evaluate : [] }, {
-				inputItems: items, responses: values.map(() => ({ statusCode: 200, body: '' })),
-			});
-			await execute.call(ctx);
-			assert.deepEqual(requests.map((request) => ((request.body as IDataObject).PromptParams as IDataObject[])[0].Value), values);
-		}
-	});
-
-	it('shows both prompt controls only for Quick Action Run', () => {
-		const shown = (name: string, resource: string, operation: string) => NodeHelpers.displayParameter(
-			{ resource, operation }, description.find((p) => p.name === name)!, { typeVersion: 1.3 }, null,
+		const evaluate = (i: number) => workflow.expression.getParameterValue(
+			'={{ [{ FieldName: "Resolution", Value: $json.answer }] }}', null, 0, i, node.name, items, 'manual', {},
 		);
-		for (const name of ['promptResponses', 'promptParams']) {
-			assert.equal(shown(name, 'quickAction', 'run'), true);
-			assert.equal(shown(name, 'businessobject', 'create'), false);
-			assert.equal(shown(name, 'quickAction', 'other'), false);
-		}
+		const { ctx, requests } = context({ promptParams: evaluate }, {
+			inputItems: items, responses: values.map(() => ({ statusCode: 200, body: '' })),
+		});
+		await execute.call(ctx);
+		assert.deepEqual(requests.map((request) => ((request.body as IDataObject).PromptParams as IDataObject[])[0].Value), values);
 	});
 
-	it('offers Add Prompt Response with exactly two expression-enabled fields', () => {
-		const collection = description.find((p) => p.name === 'promptResponses')!;
-		assert.equal(collection.placeholder, 'Add Prompt Response');
-		assert.equal(collection.typeOptions?.multipleValues, true);
-		const fields = (collection.options![0] as INodePropertyCollection).values;
-		assert.deepEqual(fields.map((p) => p.name), ['fieldName', 'value']);
-		for (const field of fields) assert.notEqual(field.noDataExpression, true);
-		assert.equal(fields[1].ignoreValidationDuringExecution, true);
+	it('has only the JSON prompt control, shown only for Quick Action Run', () => {
+		const shown = (resource: string, operation: string) => NodeHelpers.displayParameter(
+			{ resource, operation }, description.find((p) => p.name === 'promptParams')!, { typeVersion: 1.3 }, null,
+		);
+		for (const name of ['promptMode', 'manualPrompts', 'promptResponses']) {
+			assert.equal(description.some((p) => p.name === name), false, name);
+		}
+		assert.equal(shown('quickAction', 'run'), true);
+		assert.equal(shown('businessobject', 'create'), false);
+		assert.equal(shown('quickAction', 'other'), false);
 		assert.notEqual(description.find((p) => p.name === 'promptParams')!.noDataExpression, true);
 		assert.equal(new IvantiNeuronsForItsm().description.usableAsTool, true);
+	});
+});
+
+describe('Quick Action Return Record (#62)', () => {
+	const recordUrl = `https://tenant.example.com/api/odata/businessobject/Incidents('${recordId}')`;
+	const record = '{"@odata.context":"x","RecId":"' + recordId + '","Status":"Resolved","Priority":"2"}';
+
+	it('reads the record after the action and outputs it', async () => {
+		const { ctx, requests } = context({ returnRecord: true }, { responses: [{ statusCode: 200, body: '' }, { statusCode: 200, body: record }] });
+		const output = await execute.call(ctx);
+		assert.equal(requests.length, 2);
+		assert.equal(requests[0].method, 'POST');
+		assert.equal(requests[1].method, 'GET');
+		assert.equal(requests[1].url, recordUrl);
+		assert.deepEqual(output, [{ json: { RecId: recordId, Status: 'Resolved', Priority: '2' }, pairedItem: { item: 0 } }]);
+	});
+
+	it('sends the override headers with the read as well', async () => {
+		const { ctx, requests } = context({
+			returnRecord: true,
+			'requestOptions.overrideHeaders.header': [{ name: 'Authorization', value: 'test-override' }],
+		}, { responses: [{ statusCode: 200, body: '' }, { statusCode: 200, body: record }] });
+		await execute.call(ctx);
+		assert.equal(requests[1].headers?.Authorization, 'test-override');
+	});
+
+	it('leaves the output unchanged when it is off', async () => {
+		const { ctx, requests } = context({}, { responses: [{ statusCode: 200, body: '' }] });
+		assert.deepEqual(await execute.call(ctx), [{ json: {}, pairedItem: { item: 0 } }]);
+		assert.equal(requests.length, 1);
+	});
+
+	it('does not read the record when the action failed', async () => {
+		const { ctx, requests } = context({ returnRecord: true }, { continueOnFail: true, responses: [{ statusCode: 400, body: '{"code":"ISM_4000","message":["Bad"]}' }] });
+		await execute.call(ctx);
+		assert.equal(requests.length, 1);
+	});
+
+	it('says that the action ran when only the read failed', async () => {
+		const { ctx, requests } = context({ returnRecord: true }, {
+			continueOnFail: true,
+			responses: [{ statusCode: 200, body: '' }, { statusCode: 404, body: '{"code":"ISM_4004","message":["Not found"]}' }],
+		});
+		const [output] = await execute.call(ctx);
+		assert.equal(requests.length, 2, 'the action must not be sent again');
+		assert.match(String(output.json.error), /^The quick action "Resolve_Incident" ran, but reading the record afterwards failed: .*Not found/);
+		assert.equal(output.json.httpCode, '404');
+	});
+});
+
+describe('Quick Action refused without a reason (#62)', () => {
+	for (const body of ['{"code":"ISM_5000","message":""}', '{"code":"ISM_5000","message":[]}', '']) {
+		it(`names the action and business object for HTTP 500 with ${JSON.stringify(body)}`, async () => {
+			const { ctx } = context({}, { continueOnFail: true, responses: [{ statusCode: 500, body }] });
+			const [output] = await execute.call(ctx);
+			assert.match(String(output.json.error), /^Ivanti API request failed \(HTTP 500(, ISM_5000)?\): Ivanti refused the quick action "Resolve_Incident" on Incidents without saying why/);
+		});
+	}
+
+	it('keeps a refusal that has a reason as it is', async () => {
+		const { ctx } = context({}, { continueOnFail: true, responses: [{ statusCode: 500, body: '{"code":"ISM_5000","message":["Invalid value"]}' }] });
+		const [output] = await execute.call(ctx);
+		assert.equal(output.json.error, 'Ivanti API request failed (HTTP 500, ISM_5000): Invalid value');
 	});
 });
