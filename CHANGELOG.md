@@ -7,6 +7,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed
+- With **Settings → On Error** set to **Continue (using error output)**, an item that Ivanti rejected with an HTTP status now goes to the **error** output, in every operation (#63). It went to the success output because of its `httpCode` field, so the success branch got `{ error, httpCode }` as if it were a record. The item still carries `error` and `httpCode`, so **Continue (regular output)** is unchanged
+
 ## [1.7.2] - 2026-11-06
 
 ### Added
