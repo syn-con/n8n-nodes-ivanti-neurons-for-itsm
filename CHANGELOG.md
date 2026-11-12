@@ -7,6 +7,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed
+- **Credentials** (Ivanti Neurons for ITSM API and the Connector credential): **Tenant** is now **Tenant URL** and accepts `http://` as well as `https://`, for servers without TLS. The protocol you type is used; a host name without one still uses `https://`, so saved credentials keep working. A value already saved with `http://` now connects over http instead of https. Over http the API key is sent unencrypted
+
 ## [1.8.0] - 2026-11-12
 
 ### Added

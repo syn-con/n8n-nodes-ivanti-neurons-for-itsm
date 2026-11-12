@@ -13,13 +13,13 @@ export class ivantiNeuronsForItsmApiKeyApi implements ICredentialType {
 	documentationUrl = 'https://help.ivanti.com/ht/help/en_US/ISM/2022/admin/Content/Configure/API/RestAPI-Introduction.htm';
 	properties: INodeProperties[] = [
 		{
-			displayName: 'Ivanti Neurons for ITSM Tenant',
+			displayName: 'Ivanti Neurons for ITSM Tenant URL',
 			name: 'tenant',
 			type: 'string',
 			default: '',
-			placeholder: 'sg-tenant.ivanti.com',
+			placeholder: 'https://sg-tenant.ivanti.com',
 			required: true,
-			description: 'The tenant hostname, e.g. sg-tenant.ivanti.com',
+			description: 'The tenant URL, e.g. https://sg-tenant.ivanti.com. Use http:// for a server without TLS, which sends the API key unencrypted. A host name without a protocol uses https://',
 		},
 		{
 			displayName: 'Ivanti Neurons for ITSM API Key',
@@ -71,7 +71,7 @@ export class ivantiNeuronsForItsmApiKeyApi implements ICredentialType {
 
 	test: ICredentialTestRequest = {
 		request: {
-			baseURL: '={{ "https://" + $credentials.tenant.replace(/^https?:\\/\\//, "").replace(/\\/+$/, "") + ($credentials.isOnPrem ? "/HEAT" : "") + "/api/odata/businessobject" }}',
+			baseURL: '={{ (/^https?:\\/\\//i.test($credentials.tenant.trim()) ? "" : "https://") + $credentials.tenant.trim().replace(/\\/+$/, "") + ($credentials.isOnPrem ? "/HEAT" : "") + "/api/odata/businessobject" }}',
 			method: 'GET',
 			url: '/Incidents?$top=1',
 		},
