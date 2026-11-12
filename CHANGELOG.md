@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.8.0] - 2026-11-12
+
 ### Added
 - **Quick Action → Run** has a **Return Record** option, off by default (#62). When on, the node reads the record after the action ran and outputs it, so the next node sees the values the action left, such as a recomputed Priority or the new Status. If only that read fails, the error says that the action ran
 
