@@ -7,6 +7,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+- **Quick Action → Run** has a **Return Record** option, off by default (#62). When on, the node reads the record after the action ran and outputs it, so the next node sees the values the action left, such as a recomputed Priority or the new Status. If only that read fails, the error says that the action ran
+
+### Changed
+- **Quick Action → Run**: when Ivanti refuses an action with HTTP 500 and no message (`ISM_5000`), the error now names the quick action and the business object and says that Ivanti gave no reason (#62)
+
 ### Fixed
 - With **Settings → On Error** set to **Continue (using error output)**, an item that Ivanti rejected with an HTTP status now goes to the **error** output, in every operation (#63). It went to the success output because of its `httpCode` field, so the success branch got `{ error, httpCode }` as if it were a record. The item still carries `error` and `httpCode`, so **Continue (regular output)** is unchanged
 
