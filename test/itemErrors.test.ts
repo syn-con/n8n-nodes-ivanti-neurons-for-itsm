@@ -1,7 +1,7 @@
 /* eslint-disable @n8n/community-nodes/no-restricted-imports -- tests are not published, so they may use the Node test runner */
 import assert from 'node:assert/strict';
 import { describe, it } from 'node:test';
-import { NodeApiError, NodeOperationError } from 'n8n-workflow';
+import { NodeApiError, NodeOperationError, type INodeExecutionData } from 'n8n-workflow';
 
 import { continueOnFailItem, itemError } from '../nodes/IvantiNeuronsForITSM/actions/itemErrors';
 import { execute as getServiceReqParams } from '../nodes/IvantiNeuronsForITSM/actions/serviceReq/getServiceReqParams.operation';
@@ -9,19 +9,43 @@ import { fakeExecuteContext, page } from './context';
 
 const GUID = '07E1BD1BF5804E67B8E76B26FA6EF9A0';
 
+/**
+ * The check n8n uses to send an item to the error output when On Error is
+ * "Continue (using error output)" (packages/core/src/execution-engine/workflow-execute.ts
+ * at n8n@2.46.5, lines 3092-3099).
+ */
+function goesToErrorOutput(item: INodeExecutionData): boolean {
+	if (item.error) return true;
+	return Boolean(item.json.error) && Object.keys(item.json).every((key) => ['error', 'message', 'details'].includes(key));
+}
+
 describe('continueOnFailItem', () => {
 	it('pairs the error item to its input item and keeps the HTTP code', () => {
 		const { ctx } = fakeExecuteContext();
 		const error = new NodeApiError(ctx.getNode(), { message: 'Not found' }, { message: 'Gone', httpCode: '404' });
 
-		assert.deepEqual(continueOnFailItem(error, 2), {
-			json: { error: 'Gone', httpCode: '404' },
-			pairedItem: { item: 2 },
-		});
+		const item = continueOnFailItem(error, 2);
+		assert.deepEqual(item.json, { error: 'Gone', httpCode: '404' });
+		assert.deepEqual(item.pairedItem, { item: 2 });
+		assert.equal(item.error, error);
 	});
 
 	it('accepts something that is not an Error', () => {
 		assert.deepEqual(continueOnFailItem('boom', 0), { json: { error: 'boom' }, pairedItem: { item: 0 } });
+	});
+
+	it('sends every failed item to the error output, also with an HTTP code (#63)', () => {
+		const { ctx } = fakeExecuteContext();
+		const failures: unknown[] = [
+			new NodeApiError(ctx.getNode(), { message: 'Bad request' }, { message: 'Rejected', httpCode: '400' }),
+			new NodeApiError(ctx.getNode(), { message: 'No reply' }),
+			new NodeOperationError(ctx.getNode(), 'Record ID is not valid'),
+			new Error('socket hang up'),
+			'boom',
+		];
+		for (const error of failures) {
+			assert.equal(goesToErrorOutput(continueOnFailItem(error, 0)), true, String(error));
+		}
 	});
 });
 
