@@ -14,6 +14,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **Quick Action → Run**: when Ivanti refuses an action with HTTP 500 and no message (`ISM_5000`), the error now names the quick action and the business object and says that Ivanti gave no reason (#62)
 
 ### Fixed
+- **Service Request → Create (Simplified)** uses the template's actual parameter types instead of matching words in field names, preserving text answers such as `ListName` and `ListMembers`. Supplied dropdown answers with no validation options now fail clearly before submission; unanswered optional fields are omitted (#17). See [the parameter guide](docs/service-request-parameters.md)
 - With **Settings → On Error** set to **Continue (using error output)**, an item that Ivanti rejected with an HTTP status now goes to the **error** output, in every operation (#63). It went to the success output because of its `httpCode` field, so the success branch got `{ error, httpCode }` as if it were a record. The item still carries `error` and `httpCode`, so **Continue (regular output)** is unchanged
 
 ## [1.7.2] - 2026-11-06
@@ -22,7 +23,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **Quick Action → Run** answers the prompts of a quick action (#46): **Prompt Parameters (JSON)** is the complete prompt array (`DataLayer.PromptData` entries with `FieldName` and `Value`), sent as written, as JSON text or an expression. Values from expressions keep their JSON types. Empty or `[]` leaves the request unchanged. See [the prompt guide](docs/quick-action-prompts.md)
 
 ### Fixed
-- **Service Request → Create (Simplified)** uses the template's actual parameter types instead of matching words in field names, preserving text answers such as `ListName` and `ListMembers`. Supplied dropdown answers with no validation options now fail clearly before submission; unanswered optional fields are omitted (#17). See [the parameter guide](docs/service-request-parameters.md)
 - **Quick Action → Run** returns a valid empty JSON item for successful HTTP 200/204 responses without a body, preserving input-item linking without retrying the action (#46)
 
 ## [1.7.0] - 2026-11-05
