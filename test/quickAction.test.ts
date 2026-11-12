@@ -232,3 +232,66 @@ describe('Quick Action prompt editor and tool properties', () => {
 		assert.equal(new IvantiNeuronsForItsm().description.usableAsTool, true);
 	});
 });
+
+describe('Quick Action Return Record (#62)', () => {
+	const recordUrl = `https://tenant.example.com/api/odata/businessobject/Incidents('${recordId}')`;
+	const record = '{"@odata.context":"x","RecId":"' + recordId + '","Status":"Resolved","Priority":"2"}';
+
+	it('reads the record after the action and outputs it', async () => {
+		const { ctx, requests } = context({ returnRecord: true }, { responses: [{ statusCode: 200, body: '' }, { statusCode: 200, body: record }] });
+		const output = await execute.call(ctx);
+		assert.equal(requests.length, 2);
+		assert.equal(requests[0].method, 'POST');
+		assert.equal(requests[1].method, 'GET');
+		assert.equal(requests[1].url, recordUrl);
+		assert.deepEqual(output, [{ json: { RecId: recordId, Status: 'Resolved', Priority: '2' }, pairedItem: { item: 0 } }]);
+	});
+
+	it('sends the override headers with the read as well', async () => {
+		const { ctx, requests } = context({
+			returnRecord: true,
+			'requestOptions.overrideHeaders.header': [{ name: 'Authorization', value: 'test-override' }],
+		}, { responses: [{ statusCode: 200, body: '' }, { statusCode: 200, body: record }] });
+		await execute.call(ctx);
+		assert.equal(requests[1].headers?.Authorization, 'test-override');
+	});
+
+	it('leaves the output unchanged when it is off', async () => {
+		const { ctx, requests } = context({}, { responses: [{ statusCode: 200, body: '' }] });
+		assert.deepEqual(await execute.call(ctx), [{ json: {}, pairedItem: { item: 0 } }]);
+		assert.equal(requests.length, 1);
+	});
+
+	it('does not read the record when the action failed', async () => {
+		const { ctx, requests } = context({ returnRecord: true }, { continueOnFail: true, responses: [{ statusCode: 400, body: '{"code":"ISM_4000","message":["Bad"]}' }] });
+		await execute.call(ctx);
+		assert.equal(requests.length, 1);
+	});
+
+	it('says that the action ran when only the read failed', async () => {
+		const { ctx, requests } = context({ returnRecord: true }, {
+			continueOnFail: true,
+			responses: [{ statusCode: 200, body: '' }, { statusCode: 404, body: '{"code":"ISM_4004","message":["Not found"]}' }],
+		});
+		const [output] = await execute.call(ctx);
+		assert.equal(requests.length, 2, 'the action must not be sent again');
+		assert.match(String(output.json.error), /^The quick action "Resolve_Incident" ran, but reading the record afterwards failed: .*Not found/);
+		assert.equal(output.json.httpCode, '404');
+	});
+});
+
+describe('Quick Action refused without a reason (#62)', () => {
+	for (const body of ['{"code":"ISM_5000","message":""}', '{"code":"ISM_5000","message":[]}', '']) {
+		it(`names the action and business object for HTTP 500 with ${JSON.stringify(body)}`, async () => {
+			const { ctx } = context({}, { continueOnFail: true, responses: [{ statusCode: 500, body }] });
+			const [output] = await execute.call(ctx);
+			assert.match(String(output.json.error), /^Ivanti API request failed \(HTTP 500(, ISM_5000)?\): Ivanti refused the quick action "Resolve_Incident" on Incidents without saying why/);
+		});
+	}
+
+	it('keeps a refusal that has a reason as it is', async () => {
+		const { ctx } = context({}, { continueOnFail: true, responses: [{ statusCode: 500, body: '{"code":"ISM_5000","message":["Invalid value"]}' }] });
+		const [output] = await execute.call(ctx);
+		assert.equal(output.json.error, 'Ivanti API request failed (HTTP 500, ISM_5000): Invalid value');
+	});
+});

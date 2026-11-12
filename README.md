@@ -850,6 +850,7 @@ Run an action on a record, optionally supplying its prompt answers.
 | Quick Action | REST action name, for example `Resolve_Incident`; use the tenant's API name rather than assuming a toolbar label is callable |
 | Quick Action ID | ID of that action in the selected tenant |
 | Prompt Parameters (JSON) | The complete prompt array, sent as written; accepts JSON text or an expression such as `{{ $json.promptParams }}`. Empty or `[]` means no prompts |
+| Return Record | Off by default. When on, the record is read after the action ran and output, so the next node sees the values the action left. If only that read fails, the error says the action ran |
 
 Each entry is a `DataLayer.PromptData` object with at least `FieldName` and `Value`,
 for example:
@@ -877,7 +878,7 @@ for it ([issue #46](https://github.com/syn-con/n8n-nodes-ivanti-neurons-for-itsm
 
 Values supplied by expressions keep their JSON types, including `false`, `0`, and
 `null`; literal text stays text. With no prompts the request is unchanged. A
-successful empty response produces one linked `{}` output item. Read the record
+successful empty response produces one linked `{}` output item. Turn on **Return Record** to get the record instead. Read the record
 afterward when you need to confirm the effect.
 
 ---

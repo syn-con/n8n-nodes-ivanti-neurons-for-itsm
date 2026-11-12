@@ -7,6 +7,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+- **Quick Action → Run** has a **Return Record** option, off by default (#62). When on, the node reads the record after the action ran and outputs it, so the next node sees the values the action left, such as a recomputed Priority or the new Status. If only that read fails, the error says that the action ran
+
+### Changed
+- **Quick Action → Run**: when Ivanti refuses an action with HTTP 500 and no message (`ISM_5000`), the error now names the quick action and the business object and says that Ivanti gave no reason (#62)
+
 ## [1.7.2] - 2026-11-06
 
 ### Added
