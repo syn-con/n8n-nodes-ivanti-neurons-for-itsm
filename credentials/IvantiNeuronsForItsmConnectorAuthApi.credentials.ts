@@ -107,14 +107,15 @@ export class IvantiNeuronsForItsmConnectorAuthApi implements ICredentialType {
             description: 'The API Key for the Webhook authentication.',
         },
 
-        // Hostname (or host + path) of the Ivanti tenant, e.g. "acme.ivanticloud.com"
+        // URL of the Ivanti tenant, e.g. "https://acme.ivanticloud.com"; a bare host name means https
         {
-            displayName: 'Ivanti Neurons for ITSM Tenant',
+            displayName: 'Ivanti Neurons for ITSM Tenant URL',
             name: 'tenant',
             type: 'string',
             default: '',
+            placeholder: 'https://sg-tenant.ivanti.com',
             required: true,
-            description: 'The tenant hostname, e.g. sg-tenant.ivanti.com',
+            description: 'The tenant URL, e.g. https://sg-tenant.ivanti.com. Use http:// for a server without TLS, which sends the API key unencrypted. A host name without a protocol uses https://',
         },
         // REST API key used to authenticate outbound calls to the Ivanti OData API
         {
@@ -167,12 +168,12 @@ export class IvantiNeuronsForItsmConnectorAuthApi implements ICredentialType {
             },
         },
     };
-    // Validates the credential by fetching a single Incidents page; strips any accidental
-    // protocol prefix or trailing slash from the tenant value before building the URL
+    // Validates the credential by fetching a single N8N_AuthTypes page; keeps the tenant's
+    // http:// or https:// (https:// when none is typed) and drops a trailing slash
     test: ICredentialTestRequest = {
         request: {
             method: 'GET',
-            baseURL: '={{ "https://" + $credentials.tenant.replace(/^https?:\\/\\//, "").replace(/\\/+$/, "") + ($credentials.isOnPrem ? "/HEAT" : "") + "/api/odata/businessobject" }}',
+            baseURL: '={{ (/^https?:\\/\\//i.test($credentials.tenant.trim()) ? "" : "https://") + $credentials.tenant.trim().replace(/\\/+$/, "") + ($credentials.isOnPrem ? "/HEAT" : "") + "/api/odata/businessobject" }}',
             url: '/N8N_AuthTypes',
         },
         rules: [

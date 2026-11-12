@@ -380,8 +380,8 @@ async function validateAutomationTransaction(this: IWebhookFunctions, headers: I
 	}
 	const skipSslVerification = credentials.skipSslVerification as boolean;
 	const transactionId = headers['x-transaction-id'];
-	// Same URL rules as the action node: the tenant may be typed with a protocol
-	// or a trailing slash, and on-prem deployments use the /HEAT/api path.
+	// Same URL rules as the action node: the Tenant URL keeps its http:// or https://
+	// (https:// for a bare host name), and on-prem deployments use the /HEAT/api path.
 	const url = buildBaseUrl(credentials, `/odata/businessobject/IVNT_Automation_Transactionss('${transactionId}')`);
 	const options: IHttpRequestOptions = {
 		method: 'GET',

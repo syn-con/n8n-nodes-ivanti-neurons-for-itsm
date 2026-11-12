@@ -22,7 +22,7 @@ const ODATA_BATCH_SIZE = 100;
 /**
  * Makes a single authenticated HTTP request to the Ivanti Neurons for ITSM REST/OData API.
  *
- * Reads the `ivantiApiKeyApi` credential to determine the tenant hostname, whether the
+ * Reads the `ivantiApiKeyApi` credential to determine the tenant URL, whether the
  * instance is on-premises (HEAT path prefix), and whether to skip SSL verification.
  *
  * @param method   - HTTP method (GET, POST, PUT, PATCH, DELETE, …)
@@ -494,25 +494,33 @@ function errorPrefix(statusCode: number, body: unknown): string {
 		: `Ivanti API request failed (HTTP ${statusCode})`;
 }
 
-/** Strip any protocol prefix and trailing slashes from a user-entered tenant value. */
+/**
+ * The tenant's origin from the credential's Tenant URL, e.g. `https://itsm.example.com`.
+ * An `http://` or `https://` prefix is kept; a host name without one gets `https://`,
+ * as before. Trailing slashes are dropped.
+ */
 export function normalizeTenant(tenant: string): string {
-	return tenant.replace(/^https?:\/\//, '').replace(/\/+$/, '');
+	const value = tenant.trim().replace(/\/+$/, '');
+	const protocol = /^(https?):\/\//i.exec(value);
+	return protocol
+		? `${protocol[1].toLowerCase()}://${value.slice(protocol[0].length)}`
+		: `https://${value}`;
 }
 
 /**
  * Builds the API base URL from a credential.
  * On-prem instances expose the API under the /HEAT virtual directory.
  *
- * @param credential - decrypted credential containing `tenant` and `isOnPrem`
+ * @param credential - decrypted credential containing `tenant` (the Tenant URL) and `isOnPrem`
  * @param endpoint   - API path starting with `/` (default `''`)
  */
 export function buildBaseUrl(
 	credential: ICredentialDataDecryptedObject,
 	endpoint = '',
 ): string {
-	const tenant = normalizeTenant(credential.tenant as string);
+	const origin = normalizeTenant(credential.tenant as string);
 	const tenantPath = (credential.isOnPrem as boolean) ? '/HEAT/api' : '/api';
-	return `https://${tenant}${tenantPath}${endpoint}`;
+	return `${origin}${tenantPath}${endpoint}`;
 }
 
 

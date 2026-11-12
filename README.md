@@ -104,7 +104,7 @@ Before using any nodes, configure your Ivanti credentials:
 1. In n8n, go to **Credentials** → **New**
 2. Search for "Ivanti Neurons for ITSM API"
 3. Fill in:
-   - **Tenant**: Your Ivanti hostname (e.g., `mytenant.ivanticloud.com`)
+   - **Tenant URL**: Your Ivanti URL (e.g., `https://mytenant.ivanticloud.com`, or `http://itsm.local` for a server without TLS)
    - **API Key**: Your Ivanti REST API key
    - **Is On Prem**: Check if using on-premises instance
 4. Click **Test & Save**
@@ -201,7 +201,7 @@ This credential is used by the main action nodes and polling trigger.
 
 | Field | Type | Description | Example |
 |-------|------|-------------|---------|
-| **Tenant** | string | Your Ivanti hostname (without protocol) | `mytenant.ivanticloud.com` |
+| **Tenant URL** | string | Your Ivanti URL with `https://` or `http://`. A host name without a protocol uses `https://` | `https://mytenant.ivanticloud.com` |
 | **API Key** | password | Your Ivanti REST API key | `abc123...xyz789` |
 | **Is On Prem** | boolean | Enable for on-premises instances | `false` (cloud) / `true` (on-prem) |
 | **Skip SSL Verification** | boolean | Disable SSL cert validation | `false` (recommended) |
@@ -225,11 +225,11 @@ This credential is used by the main action nodes and polling trigger.
 
 When you save the credential, n8n automatically tests it by making a `GET` request to:
 ```
-https://{tenant}/api/odata/businessobject/Incidents?$top=1
+{tenant URL}/api/odata/businessobject/Incidents?$top=1
 ```
 
 If the test fails, check:
-- Tenant hostname is correct (no protocol, no trailing slash)
+- Tenant URL is correct, including `http://` or `https://` (a host name alone means `https://`)
 - API key is valid and not expired
 - User has "REST API User" role
 - For on-prem: "Is On Prem" checkbox is enabled
@@ -1508,12 +1508,12 @@ For polling triggers:
 
 **Cloud Instances**:
 ```
-https://{tenant}/api
+{tenant URL}/api
 ```
 
 **On-Premises Instances**:
 ```
-https://{tenant}/HEAT/api
+{tenant URL}/HEAT/api
 ```
 
 ### Endpoints Used

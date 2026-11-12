@@ -136,4 +136,11 @@ describe('ivantiApiRequest', () => {
 			`https://itsm.example.com/HEAT/api${endpoint}`,
 		);
 	});
+
+	it('keeps http:// from the Tenant URL and uses https:// for a bare host name', () => {
+		assert.equal(buildBaseUrl({ tenant: 'http://itsm.local:8080/', isOnPrem: true }, endpoint), `http://itsm.local:8080/HEAT/api${endpoint}`);
+		assert.equal(buildBaseUrl({ tenant: ' HTTP://itsm.local ' }, endpoint), `http://itsm.local/api${endpoint}`);
+		assert.equal(buildBaseUrl({ tenant: 'itsm.example.com' }, endpoint), `https://itsm.example.com/api${endpoint}`);
+		assert.equal(buildBaseUrl({ tenant: 'HTTPS://itsm.example.com//' }, endpoint), `https://itsm.example.com/api${endpoint}`);
+	});
 });
