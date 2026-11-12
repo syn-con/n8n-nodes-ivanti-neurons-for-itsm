@@ -783,6 +783,25 @@ mode). Use **Get Service Request Parameters** to discover the RecIds.
 
 ---
 
+#### Create (Simplified)
+
+Select a template and provide the **Employee Login ID**. The node resolves the
+employee and subscription automatically, then submits the service request.
+Use **Manual** mode for mapped parameters or **JSON** for the inner parameters
+object described above.
+
+Manual mode reads each parameter's actual Ivanti type, so text fields named
+`ListName`, `ListMembers` or containing `Dropdown`, `Picklist`, `List` or `Combo`
+retain their answers. A supplied dropdown answer with no validation options
+produces an error before submission. Existing saved mappings use the fix
+without being rebuilt.
+
+See [Service request parameters](docs/service-request-parameters.md) for
+expression examples, empty or dependent dropdowns, and the fix for
+[#17](https://github.com/syn-con/n8n-nodes-ivanti-neurons-for-itsm/issues/17).
+
+---
+
 ### Search
 
 Advanced search capabilities across the Ivanti platform.
