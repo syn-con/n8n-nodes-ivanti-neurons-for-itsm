@@ -29,7 +29,7 @@ export const description: INodeProperties[] = [
             },
             //saved search
             {
-                name: 'Saved Search',
+                name: 'Saved',
                 value: 'savedSearch',
                 description: 'Searches for a saved search by name and GUID',
                 action: 'Perform a saved search',
