@@ -841,9 +841,9 @@ Search across all business object types simultaneously.
 
 ---
 
-#### Saved Search
+#### Saved
 
-Execute a pre-configured saved search.
+Execute a pre-configured saved search. This operation was called **Saved Search** before 1.9.1; saved workflows are unaffected.
 
 **Parameters**:
 | Parameter | Type | Description |

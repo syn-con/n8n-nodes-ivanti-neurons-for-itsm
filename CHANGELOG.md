@@ -7,6 +7,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed
+- **Search → Saved Search** is now named **Search → Saved**, because the editor already shows the resource above the operation. Only the label changed: saved workflows keep working
+
+### Fixed
+- **Quick Action → Run** with **Return Record**: when reading the record after the action fails, the error is thrown as an n8n API error, as the n8n community package review requires. The message, HTTP code and description are unchanged
+
 ## [1.9.0] - 2026-11-12
 
 ### Changed

@@ -7,6 +7,7 @@ import {
 	type IExecuteFunctions,
 	type INodeExecutionData,
 	type INodeProperties,
+	type JsonObject,
 } from 'n8n-workflow';
 
 
@@ -131,11 +132,14 @@ async function readRecordAfterAction(
 		return data;
 	} catch (error) {
 		const reason = error instanceof Error ? error.message : String(error);
+		const message = `The quick action "${quickAction}" ran, but reading the record afterwards failed: ${reason}`;
 		if (error instanceof NodeApiError) {
-			error.message = `The quick action "${quickAction}" ran, but reading the record afterwards failed: ${reason}`;
-			throw error;
+			// The constructor returns an existing NodeApiError as is, so its HTTP
+			// code and description are kept; only the message is replaced.
+			error.message = message;
+			throw new NodeApiError(this.getNode(), error as unknown as JsonObject, { message });
 		}
-		throw new NodeOperationError(this.getNode(), `The quick action "${quickAction}" ran, but reading the record afterwards failed: ${reason}`);
+		throw new NodeOperationError(this.getNode(), message);
 	}
 }
 
