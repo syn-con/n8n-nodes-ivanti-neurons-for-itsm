@@ -7,7 +7,7 @@ import type {
 
 
 
-import { updateDisplayOptions } from 'n8n-workflow';
+import { updateDisplayOptions, type DisplayCondition } from 'n8n-workflow';
 import { odataListProperties } from '../../odata/queryProperties';
 import { buildODataQuery } from '../../odata/queryBuilder';
 
@@ -24,8 +24,35 @@ import { validateBusinessObject } from '../../common';
  * - `returnAll` / `limit` – pagination controls
  * - `selectAllFields` / `selectFields` – field projection (`$select`)
  * - `odataFilter` – multi-condition OData `$filter` builder
+ * - `odataQuery` – JSON mode; from version 1.4 it also accepts `$search` (#73)
  * - `orderBy` / `orderDirection` – result ordering (`$orderby`)
  */
+/** Version 1.3 only. */
+const ONLY_V1_3: DisplayCondition[] = [{ _cnd: { between: { from: 1.3, to: 1.3 } } }];
+/** Version 1.4 and later. */
+const FROM_V1_4: DisplayCondition[] = [{ _cnd: { gte: 1.4 } }];
+
+/**
+ * The shared list properties, with Get Many's own description of the JSON
+ * field from version 1.4, which accepts `$search` (#73). Other callers of
+ * `odataListProperties` keep the version 1.3 description.
+ */
+const listProperties: INodeProperties[] = odataListProperties.flatMap((property) => {
+    const show = property.displayOptions?.show;
+    const fromV1_3 = property.name === 'odataQuery' && property.hint !== undefined;
+    if (!fromV1_3) return [property];
+    return [
+        { ...property, displayOptions: { ...property.displayOptions, show: { ...show, '@version': ONLY_V1_3 } } },
+        {
+            ...property,
+            description:
+                'The OData options $search, $filter, $select and $orderby, with or without the $ sign. The values are sent to Ivanti as written. $select and $orderby may also be lists, e.g. ["LastModDateTime asc", "RecId asc"]. Paging ($top, $skip) is set by Return All and Limit.',
+            hint: 'To fill in values from the input, switch the field to Expression and write e.g. "$search": "{{ $json.keyword }}", or pass a whole object with {{ $json.query }}',
+            displayOptions: { ...property.displayOptions, show: { ...show, '@version': FROM_V1_4 } },
+        },
+    ];
+});
+
 export const properties: INodeProperties[] = [
     {
         displayName: "Business Object",
@@ -37,7 +64,7 @@ export const properties: INodeProperties[] = [
         description: "The business object to retrieve. Must be the plural OData collection name (e.g. 'Incidents', 'Changes').",
 
     },
-    ...odataListProperties,
+    ...listProperties,
 ];
 
 const displayOptions = {
@@ -79,7 +106,7 @@ export async function execute(this: IExecuteFunctions): Promise<INodeExecutionDa
             const baseUrl = `/odata/businessobject/${object}`;
 
             const records: IDataObject[] = [];
-            const odataQuery = buildODataQuery.call(this, i) as IDataObject;
+            const odataQuery = buildODataQuery.call(this, i, { allowSearch: true }) as IDataObject;
 
             const limit = returnAll ? undefined : (this.getNodeParameter('limit', i) as number);
             const allRecords = await fetchRecords.call(
