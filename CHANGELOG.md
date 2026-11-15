@@ -12,6 +12,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 - **Relationship → Get Related**, node version **1.4**: the query parameters of **Business Object → Get Many** (#71). **Return All** (on by default) and **Limit**, and **Mode**: Manual (Select Fields, OData Filter, Order By) or JSON (**OData Query (JSON)** with `$filter`, `$select` and `$orderby`, as on version 1.3). In JSON mode an AI agent can fill in the query with `$fromAI()`
+- **Search → Saved**, node version **1.4**: **Return All** (on by default) and **Limit** fetch all matching records or the requested maximum, instead of silently returning Ivanti's default first 25 records (#72). Saved nodes on versions 1–1.3 keep their single-request behaviour
 
 ## [1.9.1] - 2026-11-13
 

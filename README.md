@@ -858,6 +858,19 @@ Execute a pre-configured saved search. This operation was called **Saved Search*
 | Business Object | string | Object type of saved search |
 | Search Name | string | Display name of search |
 | Search ID | string | GUID of saved search |
+| Return All | boolean | Version 1.4: return every match; on by default |
+| Limit | number | Version 1.4: max results when Return All is off; default 50 |
+
+Node version **1.4** reads pages of 100 until the saved search returns a short
+page, or until **Limit** is reached. The search's ActionId and any **Options →
+Override Headers** are sent with every page. Results keep the saved search's
+own order: this endpoint does not accept `$orderby`.
+
+Existing saved nodes on versions **1–1.3** still make one request without
+`$top` or `$skip`, so Ivanti may return only its default first 25 matches. To
+fetch the remaining matches, add a **Search → Saved** node using version 1.4
+and copy the Business Object, Saved Search Name, Saved Search GUID and options
+from the existing node. Verify the output before replacing the old node.
 
 **Use Case**: Leverage complex searches configured in Ivanti UI without recreating filter logic.
 
@@ -1566,9 +1579,9 @@ To keep the number of calls down:
 
 ### API Limits
 
-- **Paging**: OData list requests (Get Many, Search by Keyword, the Polling Trigger and the Service
-  Request parameter lookups) read 100 records per request and fetch further pages until the Limit
-  is reached, or all records with Return All.
+- **Paging**: OData list requests (Get Many, Search by Keyword, Search → Saved from node version
+  1.4, the Polling Trigger and the Service Request parameter lookups) read 100 records per request
+  and fetch further pages until the Limit is reached, or all records with Return All.
 - **Filter operators**: Manual mode offers eight: Equals, Not Equals, Greater Than, Greater Than or
   Equal, Less Than, Less Than or Equal, Is Null and Is Not Null.
 - **No matching records**: Ivanti may answer with HTTP 204 and an empty body. The node returns no

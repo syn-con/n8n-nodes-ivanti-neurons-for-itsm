@@ -1,10 +1,11 @@
 import type {
+    IDataObject,
     IExecuteFunctions,
     INodeExecutionData,
     INodeProperties,
 } from 'n8n-workflow';
 
-import { extractValueArray, ivantiApiRequest } from '../../transports'
+import { extractValueArray, fetchRecords, ivantiApiRequest } from '../../transports'
 import { continueOnFailItem, itemError } from '../itemErrors';
 import { getOverrideHeaders } from '../requestOptions';
 
@@ -20,6 +21,7 @@ import { assertSafePathSegment, validateBusinessObject, validateSavedSearchName 
  * - `searchObject` – plural OData entity name the saved search belongs to
  * - `savedSearchName` – name of the saved search
  * - `savedSearchGUID` – GUID (`ActionId`) of the saved search
+ * - `returnAll` / `limit` – pagination controls from node version 1.4
  */
 export const properties: INodeProperties[] = [
     {
@@ -47,7 +49,29 @@ export const properties: INodeProperties[] = [
         default: '',
         required: true,
         description: 'The GUID of the saved search to execute',
-    }
+    },
+    {
+        displayName: 'Return All',
+        name: 'returnAll',
+        type: 'boolean',
+        default: true,
+        description: 'Whether to return all results or only up to a given limit',
+        displayOptions: { show: { '@version': [{ _cnd: { gte: 1.4 } }] } },
+    },
+    {
+        displayName: 'Limit',
+        name: 'limit',
+        type: 'number',
+        default: 50,
+        typeOptions: { minValue: 1 },
+        description: 'Max number of results to return',
+        displayOptions: {
+            show: {
+                '@version': [{ _cnd: { gte: 1.4 } }],
+                returnAll: [false],
+            },
+        },
+    },
 ];
 const displayOptions = {
     show: {
@@ -62,7 +86,9 @@ export const description = updateDisplayOptions(displayOptions, properties);
  * Executes the **Search → Saved Search** operation.
  *
  * Issues `GET /odata/businessobject/{object}/{savedSearchName}?ActionId={savedSearchGUID}`
- * and returns the matching records from `response.value`.
+ * and returns the matching records from `response.value`. Version 1.4 pages
+ * through all matches by default, or up to Limit when Return All is off.
+ * Older node versions keep their single request without paging parameters.
  *
  * @throws {NodeOperationError} when `searchObject`, `savedSearchName`, or
  *   `savedSearchGUID` are empty, when `savedSearchName` contains spaces
@@ -95,9 +121,19 @@ export async function execute(this: IExecuteFunctions): Promise<INodeExecutionDa
             }
 
 
-            const response = await ivantiApiRequest.call(this, 'GET', `/odata/businessobject/${searchObject}/${savedSearchName}`, { ActionId: savedSearchGUID }, {}, getOverrideHeaders.call(this, i));
-            // An empty answer (HTTP 204, no match) becomes an empty list, not one empty item
-            const records = extractValueArray.call(this, response);
+            const endpoint = `/odata/businessobject/${searchObject}/${savedSearchName}`;
+            const query: IDataObject = { ActionId: savedSearchGUID };
+            const headers = getOverrideHeaders.call(this, i);
+            let records: IDataObject[];
+            if (this.getNode().typeVersion >= 1.4) {
+                const returnAll = this.getNodeParameter('returnAll', i, true) as boolean;
+                const limit = returnAll ? undefined : this.getNodeParameter('limit', i, 50) as number;
+                records = await fetchRecords.call(this, endpoint, query, { returnAll, limit, headers });
+            } else {
+                const response = await ivantiApiRequest.call(this, 'GET', endpoint, query, {}, headers);
+                // An empty answer (HTTP 204, no match) becomes an empty list, not one empty item
+                records = extractValueArray.call(this, response);
+            }
             const executionData = this.helpers.constructExecutionMetaData(
                 this.helpers.returnJsonArray(records),
                 { itemData: { item: i } },
