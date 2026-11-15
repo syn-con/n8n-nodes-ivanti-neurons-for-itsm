@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.10.0] - 2026-11-15
+
 ### Fixed
 - **Relationship → Get Related** returned at most 25 related records, Ivanti's default page size, with no warning (#71). Node version **1.4** reads every page: the records are read 100 at a time with `$top` and `$skip`, ordered by `RecId` unless you set an order. Saved workflows keep their version and its single request
 
