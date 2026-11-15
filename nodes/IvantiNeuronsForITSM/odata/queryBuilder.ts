@@ -19,7 +19,16 @@ export interface ODataFilterEntry {
 export interface BuildODataQueryOptions {
     /** Prepend RecId to $select when projecting specific fields (trigger needs this for dedup). */
     includeRecId?: boolean;
+    /**
+     * Accept `$search` in JSON mode from node version 1.4 (#73). Only Business
+     * Object › Get Many sets it: Ivanti searches a business object collection, and
+     * a relationship read or the polling trigger has not been measured with it.
+     */
+    allowSearch?: boolean;
 }
+
+/** The node version from which Get Many's JSON mode accepts `$search`. */
+const SEARCH_FROM_VERSION = 1.4;
 
 /**
  * Converts a raw filter value (from the UI or an n8n expression) into the
@@ -188,12 +197,15 @@ const LIST_OPTIONS = ['$select', '$orderby'];
 /**
  * Maps a JSON-mode key to its query option (node version 1.3+). The `$` sign and
  * the letter case may vary: `filter`, `Filter` and `$Filter` are all `$filter`.
+ * `$search` is accepted only when `allowSearch` is set and the node is version
+ * 1.4 or later.
  *
- * @throws {NodeOperationError} for a paging option, `$search`, or any other key
+ * @throws {NodeOperationError} for a paging option, a refused `$search`, or any other key
  */
-function toODataOption(this: QueryCtx, key: string, itemIndex: number): string {
+function toODataOption(this: QueryCtx, key: string, itemIndex: number, allowSearch: boolean): string {
     const option = `$${key.trim().replace(/^\$/, '').toLowerCase()}`;
     if (ODATA_OPTIONS.includes(option)) return option;
+    if (option === '$search' && allowSearch && this.getNode().typeVersion >= SEARCH_FROM_VERSION) return option;
 
     if (PAGING_OPTIONS.includes(option)) {
         throw new NodeOperationError(this.getNode(), `"${key}" cannot be set in the OData query`, {
@@ -204,7 +216,9 @@ function toODataOption(this: QueryCtx, key: string, itemIndex: number): string {
     if (option === '$search') {
         throw new NodeOperationError(this.getNode(), `"${key}" cannot be used here`, {
             itemIndex,
-            description: 'Ivanti does not support $search for this read. To search by keyword, use Business Object → Search by Keyword.',
+            description: allowSearch
+                ? 'Business Object → Get Many accepts $search from node version 1.4: add the node again to get the new version. Or use Business Object → Search by Keyword.'
+                : 'This query does not accept $search. To search by keyword, use Business Object → Get Many (node version 1.4) or Business Object → Search by Keyword.',
         });
     }
     throw new NodeOperationError(this.getNode(), `Unknown OData option: ${key}`, {
@@ -276,6 +290,7 @@ export function parseNativeODataQuery(
     this: QueryCtx,
     raw: unknown,
     itemIndex: number,
+    allowSearch = false,
 ): IDataObject {
     // An expression on a missing property resolves to undefined, null or ''.
     // parseJsonObjectParameter treats that as "no options", which here would
@@ -286,7 +301,7 @@ export function parseNativeODataQuery(
     const parsed = parseJsonObjectParameter.call(this, raw, 'The "OData Query (JSON)" field', itemIndex);
     const query =
         this.getNode().typeVersion >= 1.3
-            ? readKnownOptions.call(this, parsed, itemIndex)
+            ? readKnownOptions.call(this, parsed, itemIndex, allowSearch)
             : readAnyOptions.call(this, parsed, itemIndex);
     if (Object.keys(query).length === 0) {
         throw emptyQueryError.call(this, itemIndex);
@@ -318,12 +333,16 @@ function readAnyOptions(this: QueryCtx, parsed: IDataObject, itemIndex: number):
     return query;
 }
 
-/** JSON mode of version 1.3: `$filter`, `$select` and `$orderby` only, spelled freely. */
-function readKnownOptions(this: QueryCtx, parsed: IDataObject, itemIndex: number): IDataObject {
+/**
+ * JSON mode of version 1.3: `$filter`, `$select` and `$orderby` only, spelled
+ * freely; from version 1.4 also `$search` where the caller allows it. An empty
+ * `$search` searches for nothing and is left out.
+ */
+function readKnownOptions(this: QueryCtx, parsed: IDataObject, itemIndex: number, allowSearch: boolean): IDataObject {
     const query: IDataObject = {};
     const keyOf: Record<string, string> = {};
     for (const [key, value] of Object.entries(parsed)) {
-        const option = toODataOption.call(this, key, itemIndex);
+        const option = toODataOption.call(this, key, itemIndex, allowSearch);
         if (option in keyOf) {
             throw new NodeOperationError(this.getNode(), `"${keyOf[option]}" and "${key}" both set ${option}`, {
                 itemIndex,
@@ -332,6 +351,7 @@ function readKnownOptions(this: QueryCtx, parsed: IDataObject, itemIndex: number
         }
         keyOf[option] = key;
         const sent = toODataValue.call(this, key, option, value, itemIndex);
+        if (option === '$search' && (sent === undefined || String(sent).trim() === '')) continue;
         if (sent !== undefined) query[option] = sent as IDataObject[keyof IDataObject];
     }
     return query;
@@ -378,6 +398,7 @@ export function buildODataQuery(
             this,
             readParam.call(this, 'odataQuery', itemIndex, '{}'),
             itemIndex,
+            options.allowSearch ?? false,
         );
     }
 

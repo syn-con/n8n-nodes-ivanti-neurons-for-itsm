@@ -12,7 +12,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 - **Relationship → Get Related**, node version **1.4**: the query parameters of **Business Object → Get Many** (#71). **Return All** (on by default) and **Limit**, and **Mode**: Manual (Select Fields, OData Filter, Order By) or JSON (**OData Query (JSON)** with `$filter`, `$select` and `$orderby`, as on version 1.3). In JSON mode an AI agent can fill in the query with `$fromAI()`
+- **Business Object → Get Many**, node version **1.4**: **OData Query (JSON)** accepts `$search`, with or without the `$` sign and in any letter case, sent together with `$filter`, `$select` and `$orderby` (#73). A keyword search can now be filtered, ordered and narrowed to some fields, and Return All and Limit page the hits. A search with no match gives no items. An AI agent can fill in the whole query with `$fromAI()`
 - **Search → Saved**, node version **1.4**: **Return All** (on by default) and **Limit** fetch all matching records or the requested maximum, instead of silently returning Ivanti's default first 25 records (#72). Saved nodes on versions 1–1.3 keep their single-request behaviour
+
+### Changed
+- **Business Object → Get Many** version **1.3** still refuses `$search` in the JSON query, but its message now points to version 1.4 instead of saying that Ivanti does not support it (#73)
 
 ## [1.9.1] - 2026-11-13
 

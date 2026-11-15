@@ -374,7 +374,7 @@ Because nothing is checked or escaped in JSON mode, quote text values yourself (
 
 **JSON mode in node version 1.3** checks the keys and accepts more ways to write them:
 
-- Only `$filter`, `$select` and `$orderby` are accepted, with or without the `$` sign and in any letter case: `{"filter": "…"}` and `{"$Filter": "…"}` both send `$filter`. Ivanti ignores any other key, so a typo such as `"$filtr"` would read every record; instead the node fails with `Unknown OData option: $filtr`. `$search` is refused too: Ivanti does not support it here, so use **Business Object → Search by Keyword**. The same option given twice (`"filter"` and `"$filter"`) is refused.
+- Only `$filter`, `$select` and `$orderby` are accepted, with or without the `$` sign and in any letter case: `{"filter": "…"}` and `{"$Filter": "…"}` both send `$filter`. Ivanti ignores any other key, so a typo such as `"$filtr"` would read every record; instead the node fails with `Unknown OData option: $filtr`. `$search` is refused on version 1.3; version 1.4 accepts it (see below). The same option given twice (`"filter"` and `"$filter"`) is refused.
 - `$select` and `$orderby` may also be lists, which are sent joined with commas:
 
 ```json
@@ -387,9 +387,22 @@ Because nothing is checked or escaped in JSON mode, quote text values yourself (
 
 Versions 1.1 and 1.2 still pass any key as written and do not accept lists.
 
+**`$search` in node version 1.4** (Business Object › Get Many only): the JSON query also accepts `$search`, again with or without the `$` sign and in any letter case, and sends it together with the other options. Return All and Limit page the hits, and a search with no match gives no items. This combines a keyword search with a filter, an order and a field list, which Search by Keyword cannot do:
+
+```json
+{
+  "$search": "printer offline",
+  "$filter": "Status eq 'Closed'",
+  "$orderby": "ResolvedDateTime desc",
+  "$select": "RecId,Subject,Resolution"
+}
+```
+
+An empty `$search` is left out. In an AI Agent tool, the whole query can come from the agent, for example `{{ $fromAI('query', 'OData query with $search, $filter, $select and $orderby', 'json') }}`. Relationship › Get Related and the Polling Trigger do not accept `$search`.
+
 **Values from the input**: switch the field to **Expression** and write the values into the JSON, for example `{ "$filter": "Owner eq '{{ $json.owner }}'" }`, or pass a whole query object built by an earlier node with `{{ $json.query }}`. In both cases the values are still sent as written, so quote and escape text values yourself.
 
-**Node versions**: workflows created before version 1.1 keep version 1, with the "Define Filter as JSON" toggle and no Mode field. Workflows keep the version they were built with; new nodes are added as the latest version (1.4). Version 1.2 also changes the Automation › Report Transaction Status options, version 1.3 checks the keys of the JSON mode, and version 1.4 gives Relationship › Get Related these query options and paging.
+**Node versions**: workflows created before version 1.1 keep version 1, with the "Define Filter as JSON" toggle and no Mode field. Workflows keep the version they were built with; new nodes are added as the latest version (1.4). Version 1.2 also changes the Automation › Report Transaction Status options, version 1.3 checks the keys of the JSON mode, and version 1.4 gives Relationship › Get Related these query options and paging, and lets Get Many's JSON mode send `$search`.
 
 The same options are available on the **Ivanti Neurons for ITSM Polling Trigger**.
 
