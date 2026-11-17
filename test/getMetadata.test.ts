@@ -38,16 +38,27 @@ describe('Business Object › Get Metadata', () => {
 		assert.deepEqual(requests[0].body, { BusinessObject: 'Change#' });
 	});
 
-	it('refuses a name without a trailing #', async () => {
-		for (const metadataObject of ['Incident', 'Incidents', 'frs_knowledge#Document']) {
+	it('sends a subtype name such as CI#Computer as written', async () => {
+		for (const metadataObject of ['CI#Computer', 'frs_knowledge#Document']) {
+			const { ctx, requests } = fakeExecuteContext({
+				parameters: { metadataObject },
+				responses: [{ statusCode: 200, body: '{}' }],
+			});
+			await execute.call(ctx);
+			assert.deepEqual(requests[0].body, { BusinessObject: metadataObject });
+		}
+	});
+
+	it('refuses a name without a #', async () => {
+		for (const metadataObject of ['Incident', 'Incidents', 'CIComputer']) {
 			const { ctx, requests } = fakeExecuteContext({ parameters: { metadataObject } });
-			await assert.rejects(execute.call(ctx), /must end with a "#"/);
+			await assert.rejects(execute.call(ctx), /must contain a "#"/);
 			assert.equal(requests.length, 0);
 		}
 	});
 
 	it('refuses an empty or unsafe name without sending a request', async () => {
-		for (const metadataObject of ['', '   ', '#', 'a#b#', 'Inci dent#', 'Incident"#']) {
+		for (const metadataObject of ['', '   ', '#', '#Computer', 'CI#Computer#', 'CI#Com puter', 'Inci dent#', 'Incident"#', 'CI#Computer/x']) {
 			const { ctx, requests } = fakeExecuteContext({ parameters: { metadataObject } });
 			await assert.rejects(execute.call(ctx));
 			assert.equal(requests.length, 0);

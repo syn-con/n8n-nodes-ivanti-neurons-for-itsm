@@ -11,14 +11,14 @@ import { ivantiApiRequest } from '../../transports';
 import { continueOnFailItem, itemError } from '../itemErrors';
 import { getOverrideHeaders } from '../requestOptions';
 
-/** `Incident#`, `frs_knowledge#`: letters, digits and underscores, ending with `#`. */
-const BUSINESS_OBJECT_NAME = /^[A-Za-z0-9_]+#$/;
+/** `Incident#`, or `CI#Computer` for a subtype: letters, digits and underscores, one `#`, then an optional subtype name. */
+const BUSINESS_OBJECT_NAME = /^[A-Za-z0-9_]+#[A-Za-z0-9_]*$/;
 
 /**
  * UI property definitions for the **Business Object → Get Metadata** operation.
  *
  * Exposes:
- * - `metadataObject` – internal business object name ending with `#` (e.g. `Incident#`)
+ * - `metadataObject` – internal business object name with a `#` (e.g. `Incident#`, or `CI#Computer` for a subtype)
  */
 export const properties: INodeProperties[] = [
     {
@@ -29,7 +29,7 @@ export const properties: INodeProperties[] = [
         required: true,
         placeholder: 'Incident#',
         description:
-            'The internal (singular) name of the business object, ending with #, such as Incident# or Change#',
+            'The internal (singular) name of the business object followed by #, such as Incident# or Change#. For a subtype, add its name after the #, such as CI#Computer.',
     },
 ];
 
@@ -46,23 +46,23 @@ export const description = updateDisplayOptions(displayOptions, properties);
 /**
  * Checks the parameter value and returns it trimmed.
  *
- * @throws {NodeOperationError} when the value is empty, does not end with `#`,
- *   or contains anything other than letters, digits and underscores before the `#`
+ * @throws {NodeOperationError} when the value is empty, has no `#`, or contains
+ *   anything other than letters, digits, underscores and one `#`
  */
 export function normalizeMetadataObject(this: IExecuteFunctions, value: unknown): string {
     const name = value === undefined || value === null ? '' : String(value).trim();
     if (name === '') {
         throw new NodeOperationError(this.getNode(), 'The "Business Object" parameter is required');
     }
-    if (!name.endsWith('#')) {
+    if (!name.includes('#')) {
         throw new NodeOperationError(
             this.getNode(),
-            `The "Business Object" must end with a "#" because the metadata API takes the internal name (e.g. "Incident#", "Change#")`,
+            `The "Business Object" must contain a "#" because the metadata API takes the internal name (e.g. "Incident#", or "CI#Computer" for a subtype)`,
         );
     }
     if (!BUSINESS_OBJECT_NAME.test(name)) {
         throw new NodeOperationError(this.getNode(), `Invalid business object name: "${name}"`, {
-            description: 'Use the internal name of the business object, such as "Incident#": letters, digits and underscores, followed by one #',
+            description: 'Use the internal name of the business object, such as "Incident#" or "CI#Computer": letters, digits and underscores, one #, then an optional subtype name',
         });
     }
     return name;
