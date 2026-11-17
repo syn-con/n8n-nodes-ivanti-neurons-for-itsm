@@ -579,7 +579,7 @@ Calls Ivanti's [GetBusinessObjectMetadata](https://docs.ivanti.com/neurons-for-i
 |-----------|------|-------------|
 | Business Object | string | The internal (singular) name followed by `#`, such as `Incident#` or `Change#`. For a subtype (extension object), add its name after the `#`, such as `CI#Computer`. A name without a `#` is refused |
 
-> **Note**: on Ivanti Service Manager on-premises 2026.2.0.20260827, the API does not return metadata for subtype (extension) objects such as `CI#Computer`. Use the base object, e.g. `CI#`. The node shows the same notice.
+> **Note**: on Ivanti Service Manager on-premises 2026.2.0.20260827, the API does not return metadata for subtype (extension) objects such as `CI#Computer`. Use the base object, e.g. `CI#`.
 
 Unlike the other Business Object operations, this one takes the internal name (`Incident#`), not the plural OData collection name (`Incidents`).
 
