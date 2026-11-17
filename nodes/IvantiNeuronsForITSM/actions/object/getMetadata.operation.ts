@@ -22,6 +22,13 @@ const BUSINESS_OBJECT_NAME = /^[A-Za-z0-9_]+#[A-Za-z0-9_]*$/;
  */
 export const properties: INodeProperties[] = [
     {
+        displayName:
+            'On Ivanti Service Manager on-premises 2026.2.0.20260827, the API does not return metadata for subtype (extension) objects such as CI#Computer. Use the base object, e.g. CI#.',
+        name: 'subtypeNotice',
+        type: 'notice',
+        default: '',
+    },
+    {
         displayName: 'Business Object',
         name: 'metadataObject',
         type: 'string',
