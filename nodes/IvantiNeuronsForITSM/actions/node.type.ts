@@ -7,7 +7,7 @@ import type { AllEntities } from 'n8n-workflow';
  */
 type NodeMap = {
 	search: 'fullTextSearchInSingleObject' | 'fullTextSearchAcrossAllObjects' | 'savedSearch';
-	businessobject: 'getMany' | 'getByRecId' | 'searchByKeyword' | 'create' | 'update' | 'deleteByRecId';
+	businessobject: 'getMany' | 'getByRecId' | 'searchByKeyword' | 'create' | 'update' | 'deleteByRecId' | 'getMetadata';
 	attachment: 'read' | 'upload' | 'deleteOp';
 	relationship: 'getRelated' | 'link' | 'unlink';
 	serviceReq: 'getSubscription' | 'getServiceReqParams' | 'create' | 'createSimplified';

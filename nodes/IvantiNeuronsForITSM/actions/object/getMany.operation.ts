@@ -1,13 +1,11 @@
-import type {
-    IDataObject,
-    IExecuteFunctions,
-    INodeExecutionData,
-    INodeProperties,
+import {
+    updateDisplayOptions,
+    type DisplayCondition,
+    type IDataObject,
+    type IExecuteFunctions,
+    type INodeExecutionData,
+    type INodeProperties,
 } from 'n8n-workflow';
-
-
-
-import { updateDisplayOptions, type DisplayCondition } from 'n8n-workflow';
 import { odataListProperties } from '../../odata/queryProperties';
 import { buildODataQuery } from '../../odata/queryBuilder';
 
