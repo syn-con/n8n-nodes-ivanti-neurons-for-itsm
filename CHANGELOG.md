@@ -8,7 +8,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Added
-- **Business Object → Get Metadata**: a new operation that returns the fields, relationships, saved searches, templates and quick actions of a business object, from Ivanti's GetBusinessObjectMetadata API. **Business Object** takes the internal name, such as `Incident#` (the `#` may be left out), or `frs_knowledge#Document` for a child object
+- **Business Object → Get Metadata**: a new operation that returns the fields, relationships, saved searches, templates and quick actions of a business object, from Ivanti's GetBusinessObjectMetadata API. **Business Object** takes the internal name, which must end with `#`, such as `Incident#`
 
 ## [1.10.0] - 2026-11-15
 

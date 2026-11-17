@@ -11,12 +11,14 @@ import { ivantiApiRequest } from '../../transports';
 import { continueOnFailItem, itemError } from '../itemErrors';
 import { getOverrideHeaders } from '../requestOptions';
 
+/** `Incident#`, `frs_knowledge#`: letters, digits and underscores, ending with `#`. */
+const BUSINESS_OBJECT_NAME = /^[A-Za-z0-9_]+#$/;
+
 /**
  * UI property definitions for the **Business Object → Get Metadata** operation.
  *
  * Exposes:
- * - `metadataObject` – internal business object name (e.g. `Incident#`), optionally
- *   followed by a child object (e.g. `frs_knowledge#Document`)
+ * - `metadataObject` – internal business object name ending with `#` (e.g. `Incident#`)
  */
 export const properties: INodeProperties[] = [
     {
@@ -27,7 +29,7 @@ export const properties: INodeProperties[] = [
         required: true,
         placeholder: 'Incident#',
         description:
-            'The internal (singular) name of the business object, such as Incident# or Change#. The # may be left out. To read a child object, add its name after the #, such as frs_knowledge#Document',
+            'The internal (singular) name of the business object, ending with #, such as Incident# or Change#',
     },
 ];
 
@@ -40,28 +42,30 @@ const displayOptions = {
 
 export const description = updateDisplayOptions(displayOptions, properties);
 
-/** `Incident`, `Incident#`, `frs_knowledge#Document`: letters, digits and underscores, with one optional `#`. */
-const BUSINESS_OBJECT_NAME = /^[A-Za-z0-9_]+(#[A-Za-z0-9_]*)?$/;
 
 /**
- * Turns the parameter value into the name Ivanti expects: trimmed, and with a
- * trailing `#` added when the value has none (`Incident` becomes `Incident#`).
+ * Checks the parameter value and returns it trimmed.
  *
- * @throws {NodeOperationError} when the value is empty or contains anything
- *   other than letters, digits, underscores and one `#`
+ * @throws {NodeOperationError} when the value is empty, does not end with `#`,
+ *   or contains anything other than letters, digits and underscores before the `#`
  */
 export function normalizeMetadataObject(this: IExecuteFunctions, value: unknown): string {
     const name = value === undefined || value === null ? '' : String(value).trim();
     if (name === '') {
         throw new NodeOperationError(this.getNode(), 'The "Business Object" parameter is required');
     }
+    if (!name.endsWith('#')) {
+        throw new NodeOperationError(
+            this.getNode(),
+            `The "Business Object" must end with a "#" because the metadata API takes the internal name (e.g. "Incident#", "Change#")`,
+        );
+    }
     if (!BUSINESS_OBJECT_NAME.test(name)) {
         throw new NodeOperationError(this.getNode(), `Invalid business object name: "${name}"`, {
-            description:
-                'Use the internal name of the business object, such as "Incident#", or "frs_knowledge#Document" for a child object. It may contain letters, digits, underscores and one #',
+            description: 'Use the internal name of the business object, such as "Incident#": letters, digits and underscores, followed by one #',
         });
     }
-    return name.includes('#') ? name : `${name}#`;
+    return name;
 }
 
 /**

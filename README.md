@@ -577,7 +577,7 @@ Calls Ivanti's [GetBusinessObjectMetadata](https://docs.ivanti.com/neurons-for-i
 **Parameters**:
 | Parameter | Type | Description |
 |-----------|------|-------------|
-| Business Object | string | The internal (singular) name, such as `Incident#` or `Change#`. The `#` may be left out. For a child object, add its name after the `#`, such as `frs_knowledge#Document` |
+| Business Object | string | The internal (singular) name, ending with `#`, such as `Incident#` or `Change#`. A name without the `#` is refused |
 
 Unlike the other Business Object operations, this one takes the internal name (`Incident#`), not the plural OData collection name (`Incidents`).
 
