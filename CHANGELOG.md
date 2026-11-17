@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.11.0] - 2026-11-17
+
 ### Added
 - **Business Object → Get Metadata**: a new operation that returns the fields, relationships, saved searches, templates and quick actions of a business object, from Ivanti's GetBusinessObjectMetadata API. **Business Object** takes the internal name with a `#`, such as `Incident#`, or `CI#Computer` for a subtype. Ivanti Service Manager on-premises 2026.2.0.20260827 does not return metadata for subtypes; use the base object, e.g. `CI#`
 
