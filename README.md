@@ -568,6 +568,34 @@ This searches across all searchable fields (Subject, Description, etc.) for the 
 
 ---
 
+##### Get Metadata
+
+Read the structure of a business object: its fields (name, display name, data type, length, and whether the field is hidden, system, validated or linked), its relationships and the fields of related objects, and the names of its saved searches, templates and quick actions. Use it to find the exact field names before building a filter or a Create / Update request.
+
+Calls Ivanti's [GetBusinessObjectMetadata](https://docs.ivanti.com/neurons-for-itsm/admin-user-help/enu/latest/getbusinessobjectmetadata) REST API (`GET /api/rest/GetBusinessObjectMetadata`) and returns Ivanti's reply as one item.
+
+**Parameters**:
+| Parameter | Type | Description |
+|-----------|------|-------------|
+| Business Object | string | The internal (singular) name, such as `Incident#` or `Change#`. The `#` may be left out. For a child object, add its name after the `#`, such as `frs_knowledge#Document` |
+
+Unlike the other Business Object operations, this one takes the internal name (`Incident#`), not the plural OData collection name (`Incidents`).
+
+**Example output** (shortened):
+```json
+{
+  "BusinessObject": {
+    "TableName": "Incident",
+    "Fields": [
+      { "FieldName": "RecId", "DisplayName": "RecId", "DataType": "FixedText", "Length": 32, "HideFromUI": true, "System": true, "IsValidated": false, "IsLinked": false }
+    ],
+    "LinkedObjects": []
+  }
+}
+```
+
+---
+
 ### Attachment
 
 Manage file attachments on business object records.

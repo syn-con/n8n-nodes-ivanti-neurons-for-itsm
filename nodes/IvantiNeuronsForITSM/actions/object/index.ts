@@ -6,9 +6,10 @@ import * as searchByKeyword from './searchByKeyword.operation';
 import * as create from './create.operation';
 import * as update from './update.operation';
 import * as deleteByRecId from './deleteByRecId.operation';
+import * as getMetadata from './getMetadata.operation';
 
 /** Re-export all Business Object operation modules for use by the router. */
-export { getMany, getByRecId, searchByKeyword, create, update, deleteByRecId };
+export { getMany, getByRecId, searchByKeyword, create, update, deleteByRecId, getMetadata };
 
 export const description: INodeProperties[] = [
     {
@@ -43,6 +44,12 @@ export const description: INodeProperties[] = [
                 action: 'Get many records from a business object',
             },
             {
+                name: 'Get Metadata',
+                value: 'getMetadata',
+                description: 'Retrieves the fields, relationships, saved searches, templates and quick actions of a business object',
+                action: 'Get the metadata of a business object',
+            },
+            {
                 name: 'Search By Keyword',
                 value: 'searchByKeyword',
                 description: 'Searches for records in a specified business object by a keyword',
@@ -69,4 +76,5 @@ export const description: INodeProperties[] = [
     ...create.description,
     ...update.description,
     ...deleteByRecId.description,
+    ...getMetadata.description,
 ];
