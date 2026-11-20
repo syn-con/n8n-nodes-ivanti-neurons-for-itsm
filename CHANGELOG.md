@@ -7,6 +7,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed
+- **Business Object → Get Metadata** failed with "Unhandled system exception: Request body is empty". n8n drops the body of a GET request, so the operation now sends POST, which carries the business object name
+
 ## [1.11.0] - 2026-11-17
 
 ### Added

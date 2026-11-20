@@ -71,11 +71,15 @@ export function normalizeMetadataObject(this: IExecuteFunctions, value: unknown)
 /**
  * Executes the **Business Object → Get Metadata** operation.
  *
- * Issues `GET /rest/GetBusinessObjectMetadata` with the body
- * `{ "BusinessObject": "<name>" }` for each input item, as described in
- * https://docs.ivanti.com/neurons-for-itsm/admin-user-help/enu/latest/getbusinessobjectmetadata,
- * and returns Ivanti's reply (the fields, linked objects, saved searches,
- * templates and quick actions of the business object) as one item.
+ * Issues `POST /rest/GetBusinessObjectMetadata` with the body
+ * `{ "BusinessObject": "<name>" }` for each input item, and returns Ivanti's
+ * reply (the fields, linked objects, saved searches, templates and quick
+ * actions of the business object) as one item.
+ *
+ * Ivanti's page
+ * (https://docs.ivanti.com/neurons-for-itsm/admin-user-help/enu/latest/getbusinessobjectmetadata)
+ * gives the method as GET, but n8n's HTTP helper always drops the body of a GET
+ * request, and Ivanti then answers "Request body is empty". POST carries the body.
  */
 export async function execute(this: IExecuteFunctions): Promise<INodeExecutionData[]> {
     const items = this.getInputData();
@@ -87,7 +91,7 @@ export async function execute(this: IExecuteFunctions): Promise<INodeExecutionDa
 
             const response = await ivantiApiRequest.call(
                 this,
-                'GET',
+                'POST',
                 '/rest/GetBusinessObjectMetadata',
                 {},
                 { BusinessObject: businessObject },

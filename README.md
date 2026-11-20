@@ -572,7 +572,7 @@ This searches across all searchable fields (Subject, Description, etc.) for the 
 
 Read the structure of a business object: its fields (name, display name, data type, length, and whether the field is hidden, system, validated or linked), its relationships and the fields of related objects, and the names of its saved searches, templates and quick actions. Use it to find the exact field names before building a filter or a Create / Update request.
 
-Calls Ivanti's [GetBusinessObjectMetadata](https://docs.ivanti.com/neurons-for-itsm/admin-user-help/enu/latest/getbusinessobjectmetadata) REST API (`GET /api/rest/GetBusinessObjectMetadata`) and returns Ivanti's reply as one item.
+Calls Ivanti's [GetBusinessObjectMetadata](https://docs.ivanti.com/neurons-for-itsm/admin-user-help/enu/latest/getbusinessobjectmetadata) REST API (`POST /api/rest/GetBusinessObjectMetadata`; Ivanti documents GET, but n8n cannot send a body with GET) and returns Ivanti's reply as one item.
 
 **Parameters**:
 | Parameter | Type | Description |

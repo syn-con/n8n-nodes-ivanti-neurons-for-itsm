@@ -14,14 +14,14 @@ const metadata = {
 };
 
 describe('Business Object › Get Metadata', () => {
-	it('sends GET /rest/GetBusinessObjectMetadata with the business object in the body', async () => {
+	it('sends POST /rest/GetBusinessObjectMetadata with the business object in the body', async () => {
 		const { ctx, requests } = fakeExecuteContext({
 			parameters: { metadataObject: 'Incident#' },
 			responses: [{ statusCode: 200, body: JSON.stringify(metadata) }],
 		});
 		const result = await execute.call(ctx);
 		assert.equal(requests.length, 1);
-		assert.equal(requests[0].method, 'GET');
+		assert.equal(requests[0].method, 'POST');
 		assert.equal(requests[0].url, 'https://tenant.example.com/api/rest/GetBusinessObjectMetadata');
 		assert.deepEqual(requests[0].body, { BusinessObject: 'Incident#' });
 		assert.equal(result.length, 1);
